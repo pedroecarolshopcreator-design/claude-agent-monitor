@@ -1,0 +1,46 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "command": "cam-hook pre-tool-use"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "command": "cam-hook post-tool-use"
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "*",
+        "command": "cam-hook notification"
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "command": "cam-hook stop"
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "*",
+        "command": "cam-hook subagent-stop"
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "*",
+        "command": "cam-hook pre-compact"
+      }
+    ],
+    "PostCompact": [
+      {
+        "matcher": "*",
+        "command": "cam-hook post-compact"
+      }
+    ]
+  }
+}

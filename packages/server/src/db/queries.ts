@@ -1,0 +1,455 @@
+import type Database from 'better-sqlite3';
+import type BetterSqlite3 from 'better-sqlite3';
+import { getDb } from './index.js';
+
+function db(): Database.Database {
+  return getDb();
+}
+
+type Statement = BetterSqlite3.Statement;
+
+// === Sessions ===
+
+export const sessionQueries: Record<string, () => Statement> = {
+  insert() {
+    return db().prepare(`
+      INSERT INTO sessions (id, started_at, working_directory, status, agent_count, event_count, metadata)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+  },
+
+  getById() {
+    return db().prepare(`SELECT * FROM sessions WHERE id = ?`);
+  },
+
+  getAll() {
+    return db().prepare(`
+      SELECT * FROM sessions
+      ORDER BY started_at DESC
+      LIMIT ? OFFSET ?
+    `);
+  },
+
+  getByStatus() {
+    return db().prepare(`
+      SELECT * FROM sessions
+      WHERE status = ?
+      ORDER BY started_at DESC
+      LIMIT ? OFFSET ?
+    `);
+  },
+
+  updateStatus() {
+    return db().prepare(`UPDATE sessions SET status = ?, ended_at = ? WHERE id = ?`);
+  },
+
+  incrementEventCount() {
+    return db().prepare(`UPDATE sessions SET event_count = event_count + 1 WHERE id = ?`);
+  },
+
+  updateAgentCount() {
+    return db().prepare(`UPDATE sessions SET agent_count = ? WHERE id = ?`);
+  },
+
+  deleteById() {
+    return db().prepare(`DELETE FROM sessions WHERE id = ?`);
+  },
+};
+
+// === Agents ===
+
+export const agentQueries: Record<string, () => Statement> = {
+  upsert() {
+    return db().prepare(`
+      INSERT INTO agents (id, session_id, name, type, status, first_seen_at, last_activity_at, tool_call_count, error_count)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0)
+      ON CONFLICT(id, session_id) DO UPDATE SET
+        last_activity_at = excluded.last_activity_at,
+        status = excluded.status
+    `);
+  },
+
+  getBySession() {
+    return db().prepare(`SELECT * FROM agents WHERE session_id = ? ORDER BY first_seen_at ASC`);
+  },
+
+  getById() {
+    return db().prepare(`SELECT * FROM agents WHERE id = ? AND session_id = ?`);
+  },
+
+  updateStatus() {
+    return db().prepare(`UPDATE agents SET status = ?, last_activity_at = ? WHERE id = ? AND session_id = ?`);
+  },
+
+  incrementToolCalls() {
+    return db().prepare(`
+      UPDATE agents SET tool_call_count = tool_call_count + 1, last_activity_at = ?
+      WHERE id = ? AND session_id = ?
+    `);
+  },
+
+  incrementErrors() {
+    return db().prepare(`
+      UPDATE agents SET error_count = error_count + 1, last_activity_at = ?
+      WHERE id = ? AND session_id = ?
+    `);
+  },
+
+  updateCurrentTask() {
+    return db().prepare(`UPDATE agents SET current_task = ? WHERE id = ? AND session_id = ?`);
+  },
+};
+
+// === Events ===
+
+export const eventQueries: Record<string, () => Statement> = {
+  insert() {
+    return db().prepare(`
+      INSERT INTO events (id, session_id, agent_id, timestamp, hook_type, category, tool, file_path, input, output, error, duration, metadata)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+  },
+
+  getBySession() {
+    return db().prepare(`
+      SELECT * FROM events
+      WHERE session_id = ?
+      ORDER BY timestamp DESC
+      LIMIT ? OFFSET ?
+    `);
+  },
+
+  getBySessionAndCategory() {
+    return db().prepare(`
+      SELECT * FROM events
+      WHERE session_id = ? AND category = ?
+      ORDER BY timestamp DESC
+      LIMIT ? OFFSET ?
+    `);
+  },
+
+  getBySessionAndAgent() {
+    return db().prepare(`
+      SELECT * FROM events
+      WHERE session_id = ? AND agent_id = ?
+      ORDER BY timestamp DESC
+      LIMIT ? OFFSET ?
+    `);
+  },
+
+  getBySessionAndTool() {
+    return db().prepare(`
+      SELECT * FROM events
+      WHERE session_id = ? AND tool = ?
+      ORDER BY timestamp DESC
+      LIMIT ? OFFSET ?
+    `);
+  },
+
+  getBySessionSince() {
+    return db().prepare(`
+      SELECT * FROM events
+      WHERE session_id = ? AND timestamp > ?
+      ORDER BY timestamp DESC
+      LIMIT ? OFFSET ?
+    `);
+  },
+
+  getByAgentAndCategory() {
+    return db().prepare(`
+      SELECT * FROM events
+      WHERE session_id = ? AND agent_id = ? AND category = ?
+      ORDER BY timestamp DESC
+      LIMIT ? OFFSET ?
+    `);
+  },
+
+  countBySession() {
+    return db().prepare(`SELECT COUNT(*) as count FROM events WHERE session_id = ?`);
+  },
+
+  getToolBreakdown() {
+    return db().prepare(`
+      SELECT tool, COUNT(*) as count
+      FROM events
+      WHERE session_id = ? AND tool IS NOT NULL
+      GROUP BY tool
+      ORDER BY count DESC
+    `);
+  },
+
+  getAgentBreakdown() {
+    return db().prepare(`
+      SELECT agent_id, COUNT(*) as events, SUM(CASE WHEN category = 'error' THEN 1 ELSE 0 END) as errors
+      FROM events
+      WHERE session_id = ?
+      GROUP BY agent_id
+    `);
+  },
+
+  getTimeline() {
+    return db().prepare(`
+      SELECT strftime('%H:%M', timestamp) as minute, COUNT(*) as events
+      FROM events
+      WHERE session_id = ?
+      GROUP BY minute
+      ORDER BY minute ASC
+    `);
+  },
+};
+
+// === File Changes ===
+
+export const fileChangeQueries: Record<string, () => Statement> = {
+  upsert() {
+    return db().prepare(`
+      INSERT INTO file_changes (file_path, session_id, agent_id, change_type, first_touched_at, last_touched_at, touch_count)
+      VALUES (?, ?, ?, ?, ?, ?, 1)
+      ON CONFLICT(file_path, session_id, agent_id) DO UPDATE SET
+        change_type = CASE
+          WHEN excluded.change_type IN ('created', 'modified') THEN excluded.change_type
+          ELSE file_changes.change_type
+        END,
+        last_touched_at = excluded.last_touched_at,
+        touch_count = file_changes.touch_count + 1
+    `);
+  },
+
+  getBySession() {
+    return db().prepare(`
+      SELECT * FROM file_changes
+      WHERE session_id = ?
+      ORDER BY last_touched_at DESC
+    `);
+  },
+};
+
+// === Task Items ===
+
+export const taskItemQueries: Record<string, () => Statement> = {
+  upsert() {
+    return db().prepare(`
+      INSERT INTO task_items (id, session_id, subject, status, owner, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        status = excluded.status,
+        owner = excluded.owner,
+        updated_at = excluded.updated_at
+    `);
+  },
+
+  getBySession() {
+    return db().prepare(`SELECT * FROM task_items WHERE session_id = ? ORDER BY created_at ASC`);
+  },
+};
+
+// === Projects ===
+
+export const projectQueries: Record<string, () => Statement> = {
+  insert() {
+    return db().prepare(`
+      INSERT INTO projects (id, name, description, prd_source, prd_content, created_at, updated_at, status, total_tasks, completed_tasks, current_sprint_id, metadata)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+  },
+
+  getById() {
+    return db().prepare(`SELECT * FROM projects WHERE id = ?`);
+  },
+
+  getAll() {
+    return db().prepare(`SELECT * FROM projects ORDER BY updated_at DESC`);
+  },
+
+  update() {
+    return db().prepare(`
+      UPDATE projects SET
+        name = COALESCE(?, name),
+        description = COALESCE(?, description),
+        status = COALESCE(?, status),
+        total_tasks = COALESCE(?, total_tasks),
+        completed_tasks = COALESCE(?, completed_tasks),
+        current_sprint_id = COALESCE(?, current_sprint_id),
+        updated_at = ?
+      WHERE id = ?
+    `);
+  },
+
+  updateTaskCounts() {
+    return db().prepare(`
+      UPDATE projects SET
+        total_tasks = (SELECT COUNT(*) FROM prd_tasks WHERE project_id = ?),
+        completed_tasks = (SELECT COUNT(*) FROM prd_tasks WHERE project_id = ? AND status = 'completed'),
+        updated_at = ?
+      WHERE id = ?
+    `);
+  },
+
+  deleteById() {
+    return db().prepare(`DELETE FROM projects WHERE id = ?`);
+  },
+};
+
+// === Sprints ===
+
+export const sprintQueries: Record<string, () => Statement> = {
+  insert() {
+    return db().prepare(`
+      INSERT INTO sprints (id, project_id, name, description, "order", status, started_at, completed_at, total_tasks, completed_tasks, metadata)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+  },
+
+  getByProject() {
+    return db().prepare(`SELECT * FROM sprints WHERE project_id = ? ORDER BY "order" ASC`);
+  },
+
+  getById() {
+    return db().prepare(`SELECT * FROM sprints WHERE id = ?`);
+  },
+
+  update() {
+    return db().prepare(`
+      UPDATE sprints SET
+        name = COALESCE(?, name),
+        description = COALESCE(?, description),
+        status = COALESCE(?, status),
+        started_at = COALESCE(?, started_at),
+        completed_at = COALESCE(?, completed_at),
+        total_tasks = COALESCE(?, total_tasks),
+        completed_tasks = COALESCE(?, completed_tasks)
+      WHERE id = ?
+    `);
+  },
+
+  updateTaskCounts() {
+    return db().prepare(`
+      UPDATE sprints SET
+        total_tasks = (SELECT COUNT(*) FROM prd_tasks WHERE sprint_id = ?),
+        completed_tasks = (SELECT COUNT(*) FROM prd_tasks WHERE sprint_id = ? AND status = 'completed')
+      WHERE id = ?
+    `);
+  },
+
+  getNextOrder() {
+    return db().prepare(`SELECT COALESCE(MAX("order"), 0) + 1 as next_order FROM sprints WHERE project_id = ?`);
+  },
+
+  deleteById() {
+    return db().prepare(`DELETE FROM sprints WHERE id = ?`);
+  },
+};
+
+// === PRD Tasks ===
+
+export const prdTaskQueries: Record<string, () => Statement> = {
+  insert() {
+    return db().prepare(`
+      INSERT INTO prd_tasks (id, project_id, sprint_id, external_id, title, description, acceptance_criteria, status, priority, complexity, tags, depends_on, blocked_by, assigned_agent, started_at, completed_at, session_id, prd_section, prd_line_start, prd_line_end, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+  },
+
+  getByProject() {
+    return db().prepare(`SELECT * FROM prd_tasks WHERE project_id = ? ORDER BY created_at ASC`);
+  },
+
+  getBySprint() {
+    return db().prepare(`SELECT * FROM prd_tasks WHERE sprint_id = ? ORDER BY created_at ASC`);
+  },
+
+  getByProjectAndStatus() {
+    return db().prepare(`SELECT * FROM prd_tasks WHERE project_id = ? AND status = ? ORDER BY created_at ASC`);
+  },
+
+  getByProjectAndAgent() {
+    return db().prepare(`SELECT * FROM prd_tasks WHERE project_id = ? AND assigned_agent = ? ORDER BY created_at ASC`);
+  },
+
+  getByProjectAndPriority() {
+    return db().prepare(`SELECT * FROM prd_tasks WHERE project_id = ? AND priority = ? ORDER BY created_at ASC`);
+  },
+
+  getById() {
+    return db().prepare(`SELECT * FROM prd_tasks WHERE id = ?`);
+  },
+
+  update() {
+    return db().prepare(`
+      UPDATE prd_tasks SET
+        status = COALESCE(?, status),
+        priority = COALESCE(?, priority),
+        assigned_agent = COALESCE(?, assigned_agent),
+        sprint_id = COALESCE(?, sprint_id),
+        external_id = COALESCE(?, external_id),
+        started_at = COALESCE(?, started_at),
+        completed_at = COALESCE(?, completed_at),
+        session_id = COALESCE(?, session_id),
+        updated_at = ?
+      WHERE id = ?
+    `);
+  },
+
+  getStatusSummary() {
+    return db().prepare(`
+      SELECT status, COUNT(*) as count
+      FROM prd_tasks
+      WHERE project_id = ?
+      GROUP BY status
+    `);
+  },
+
+  findByTitle() {
+    return db().prepare(`SELECT * FROM prd_tasks WHERE project_id = ? AND title LIKE ?`);
+  },
+
+  deleteById() {
+    return db().prepare(`DELETE FROM prd_tasks WHERE id = ?`);
+  },
+};
+
+// === Task Activities ===
+
+export const taskActivityQueries: Record<string, () => Statement> = {
+  insert() {
+    return db().prepare(`
+      INSERT INTO task_activities (id, prd_task_id, event_id, session_id, agent_id, activity_type, timestamp, details)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+  },
+
+  getByTask() {
+    return db().prepare(`
+      SELECT * FROM task_activities
+      WHERE prd_task_id = ?
+      ORDER BY timestamp DESC
+    `);
+  },
+};
+
+// === PRD Documents ===
+
+export const prdDocumentQueries: Record<string, () => Statement> = {
+  insert() {
+    return db().prepare(`
+      INSERT INTO prd_documents (id, project_id, version, raw_content, sections, parsed_at, parse_method)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+  },
+
+  getByProject() {
+    return db().prepare(`
+      SELECT * FROM prd_documents
+      WHERE project_id = ?
+      ORDER BY version DESC
+      LIMIT 1
+    `);
+  },
+
+  getLatestVersion() {
+    return db().prepare(`
+      SELECT COALESCE(MAX(version), 0) + 1 as next_version
+      FROM prd_documents WHERE project_id = ?
+    `);
+  },
+};

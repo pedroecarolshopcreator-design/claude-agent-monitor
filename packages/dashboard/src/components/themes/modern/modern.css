@@ -1,0 +1,62 @@
+.modern-glass {
+  background: rgba(17, 17, 17, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(42, 42, 42, 0.6);
+}
+
+.modern-glass-hover:hover {
+  background: rgba(25, 25, 25, 0.9);
+  border-color: rgba(58, 58, 58, 0.8);
+}
+
+.modern-gradient-bg {
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(139, 92, 246, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(34, 197, 94, 0.03) 0%, transparent 50%),
+    #0a0a0a;
+}
+
+.modern-card {
+  background: rgba(17, 17, 17, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(42, 42, 42, 0.5);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.modern-card:hover {
+  border-color: rgba(58, 58, 58, 0.7);
+  background: rgba(25, 25, 25, 0.8);
+}
+
+.modern-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.modern-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.modern-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(100, 100, 100, 0.3);
+  border-radius: 2px;
+}
+.modern-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 100, 100, 0.5);
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes slide-in-feed {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-in-feed {
+  animation: slide-in-feed 0.25s ease-out;
+}
