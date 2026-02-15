@@ -1,15 +1,15 @@
 import { useThemeStore } from '../../stores/theme-store';
 import { ModernShell } from '../themes/modern/ModernShell';
+import { TerminalShell } from '../themes/terminal/TerminalShell';
 
 export function Shell() {
   const { theme } = useThemeStore();
 
-  // For now, only Modern theme is implemented
-  // Pixel and Terminal themes will render ModernShell as fallback
   switch (theme) {
+    case 'terminal':
+      return <TerminalShell />;
     case 'modern':
     case 'pixel':
-    case 'terminal':
     default:
       return <ModernShell />;
   }

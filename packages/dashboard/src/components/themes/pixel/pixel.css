@@ -1,0 +1,360 @@
+/* ============================================================
+   Pixel Art Theme - RPG/Retro Gaming Aesthetic
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+/* ---- Base & Palette ---- */
+
+.pixel-theme {
+  --pixel-bg: #1a1a2e;
+  --pixel-bg-dark: #0f0f1e;
+  --pixel-surface: #222244;
+  --pixel-surface-2: #2a2a4e;
+  --pixel-surface-3: #333366;
+  --pixel-border: #444477;
+  --pixel-border-light: #5555aa;
+  --pixel-text: #e8e8ff;
+  --pixel-text-muted: #8888bb;
+  --pixel-text-dim: #6666aa;
+
+  --pixel-hp: #e63946;
+  --pixel-hp-bg: #4a1520;
+  --pixel-mp: #457b9d;
+  --pixel-mp-bg: #1a2e3d;
+  --pixel-xp: #f4a261;
+  --pixel-xp-bg: #3d2a18;
+  --pixel-gold: #ffd700;
+
+  --pixel-success: #2dce89;
+  --pixel-warning: #fb6340;
+  --pixel-error: #f5365c;
+  --pixel-info: #11cdef;
+  --pixel-accent: #7c5cff;
+
+  /* 8-bit palette colors */
+  --pixel-red: #e63946;
+  --pixel-orange: #f4a261;
+  --pixel-yellow: #ffd700;
+  --pixel-green: #2dce89;
+  --pixel-cyan: #11cdef;
+  --pixel-blue: #457b9d;
+  --pixel-purple: #7c5cff;
+  --pixel-pink: #ff6b9d;
+
+  font-family: 'Press Start 2P', monospace, sans-serif;
+  image-rendering: pixelated;
+}
+
+/* ---- Pixel Border (the signature look) ---- */
+
+.pixel-border {
+  border: 3px solid var(--pixel-border);
+  box-shadow:
+    inset -3px -3px 0 rgba(0, 0, 0, 0.4),
+    inset 3px 3px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px #000;
+}
+
+.pixel-border-light {
+  border: 2px solid var(--pixel-border);
+  box-shadow:
+    inset -2px -2px 0 rgba(0, 0, 0, 0.3),
+    inset 2px 2px 0 rgba(255, 255, 255, 0.06);
+}
+
+.pixel-border-accent {
+  border: 3px solid var(--pixel-accent);
+  box-shadow:
+    inset -3px -3px 0 rgba(0, 0, 0, 0.4),
+    inset 3px 3px 0 rgba(255, 255, 255, 0.1),
+    0 0 0 1px #000,
+    0 0 12px rgba(124, 92, 255, 0.3);
+}
+
+.pixel-border-gold {
+  border: 3px solid var(--pixel-gold);
+  box-shadow:
+    inset -3px -3px 0 rgba(0, 0, 0, 0.4),
+    inset 3px 3px 0 rgba(255, 255, 255, 0.15),
+    0 0 0 1px #000,
+    0 0 8px rgba(255, 215, 0, 0.25);
+}
+
+/* ---- Pixel Button ---- */
+
+.pixel-btn {
+  border: 2px solid var(--pixel-border-light);
+  background: var(--pixel-surface-2);
+  box-shadow:
+    inset -2px -2px 0 rgba(0, 0, 0, 0.4),
+    inset 2px 2px 0 rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: none;
+  image-rendering: pixelated;
+}
+
+.pixel-btn:hover {
+  background: var(--pixel-surface-3);
+  box-shadow:
+    inset -2px -2px 0 rgba(0, 0, 0, 0.3),
+    inset 2px 2px 0 rgba(255, 255, 255, 0.12);
+}
+
+.pixel-btn:active {
+  box-shadow:
+    inset 2px 2px 0 rgba(0, 0, 0, 0.4),
+    inset -2px -2px 0 rgba(255, 255, 255, 0.08);
+}
+
+.pixel-btn-active {
+  background: var(--pixel-accent);
+  border-color: #9d86ff;
+  color: #fff;
+  box-shadow:
+    inset -2px -2px 0 rgba(0, 0, 0, 0.3),
+    inset 2px 2px 0 rgba(255, 255, 255, 0.15),
+    0 0 8px rgba(124, 92, 255, 0.4);
+}
+
+/* ---- Pixel Card ---- */
+
+.pixel-card {
+  background: var(--pixel-surface);
+  border: 3px solid var(--pixel-border);
+  box-shadow:
+    inset -3px -3px 0 rgba(0, 0, 0, 0.35),
+    inset 3px 3px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 1px #000;
+  image-rendering: pixelated;
+}
+
+.pixel-card:hover {
+  border-color: var(--pixel-border-light);
+}
+
+/* ---- HUD Panel ---- */
+
+.pixel-hud {
+  background: linear-gradient(180deg, var(--pixel-surface) 0%, var(--pixel-bg-dark) 100%);
+  border: 3px solid var(--pixel-border);
+  box-shadow:
+    inset -3px -3px 0 rgba(0, 0, 0, 0.4),
+    inset 3px 3px 0 rgba(255, 255, 255, 0.07),
+    0 0 0 1px #000;
+}
+
+/* ---- HP/MP/XP Bars ---- */
+
+.pixel-bar-container {
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid var(--pixel-border);
+  box-shadow:
+    inset -2px -2px 0 rgba(0, 0, 0, 0.4),
+    inset 2px 2px 0 rgba(255, 255, 255, 0.04);
+  height: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.pixel-bar-fill {
+  height: 100%;
+  position: relative;
+  transition: width 0.3s steps(8);
+}
+
+.pixel-bar-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.pixel-bar-hp .pixel-bar-fill {
+  background: var(--pixel-hp);
+}
+.pixel-bar-mp .pixel-bar-fill {
+  background: var(--pixel-mp);
+}
+.pixel-bar-xp .pixel-bar-fill {
+  background: var(--pixel-xp);
+}
+.pixel-bar-green .pixel-bar-fill {
+  background: var(--pixel-green);
+}
+.pixel-bar-purple .pixel-bar-fill {
+  background: var(--pixel-purple);
+}
+.pixel-bar-gold .pixel-bar-fill {
+  background: var(--pixel-gold);
+}
+
+/* ---- Scrollbar ---- */
+
+.pixel-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.pixel-scrollbar::-webkit-scrollbar-track {
+  background: var(--pixel-bg-dark);
+  border-left: 2px solid var(--pixel-border);
+}
+.pixel-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--pixel-surface-3);
+  border: 1px solid var(--pixel-border);
+}
+.pixel-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--pixel-border-light);
+}
+.pixel-scrollbar::-webkit-scrollbar-corner {
+  background: var(--pixel-bg-dark);
+}
+
+/* ---- Animations (step-based for pixel feel) ---- */
+
+@keyframes pixel-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@keyframes pixel-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes pixel-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes pixel-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+@keyframes pixel-sparkle {
+  0% { opacity: 0; transform: scale(0.5); }
+  50% { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 0; transform: scale(0.5); }
+}
+
+@keyframes pixel-slide-in {
+  from { transform: translateX(-8px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes pixel-text-appear {
+  from { max-width: 0; overflow: hidden; }
+  to { max-width: 500px; overflow: hidden; }
+}
+
+.pixel-blink {
+  animation: pixel-blink 1s steps(1) infinite;
+}
+
+.pixel-pulse {
+  animation: pixel-pulse 2s steps(4) infinite;
+}
+
+.pixel-bounce {
+  animation: pixel-bounce 0.6s steps(4) infinite;
+}
+
+.pixel-shake {
+  animation: pixel-shake 0.4s steps(4) infinite;
+}
+
+.pixel-sparkle {
+  animation: pixel-sparkle 1.5s steps(4) infinite;
+}
+
+.pixel-slide-in {
+  animation: pixel-slide-in 0.3s steps(6) both;
+}
+
+/* ---- Status-dependent glows ---- */
+
+.pixel-glow-green {
+  box-shadow:
+    inset -3px -3px 0 rgba(0, 0, 0, 0.35),
+    inset 3px 3px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 1px #000,
+    0 0 10px rgba(45, 206, 137, 0.3);
+}
+
+.pixel-glow-red {
+  box-shadow:
+    inset -3px -3px 0 rgba(0, 0, 0, 0.35),
+    inset 3px 3px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 1px #000,
+    0 0 10px rgba(245, 54, 92, 0.3);
+}
+
+.pixel-glow-gold {
+  box-shadow:
+    inset -3px -3px 0 rgba(0, 0, 0, 0.35),
+    inset 3px 3px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 1px #000,
+    0 0 10px rgba(255, 215, 0, 0.3);
+}
+
+/* ---- Pixel text sizes (scaled for Press Start 2P which is small) ---- */
+
+.pixel-text-xs { font-size: 6px; line-height: 10px; }
+.pixel-text-sm { font-size: 7px; line-height: 12px; }
+.pixel-text-base { font-size: 8px; line-height: 14px; }
+.pixel-text-lg { font-size: 10px; line-height: 16px; }
+.pixel-text-xl { font-size: 12px; line-height: 18px; }
+.pixel-text-2xl { font-size: 14px; line-height: 20px; }
+
+/* ---- Pixel icon sprites (CSS-based) ---- */
+
+.pixel-icon-sword::before { content: '\u2694'; }
+.pixel-icon-shield::before { content: '\u{1F6E1}'; }
+.pixel-icon-star::before { content: '\u2B50'; }
+.pixel-icon-heart::before { content: '\u2764'; }
+.pixel-icon-scroll::before { content: '\u{1F4DC}'; }
+.pixel-icon-potion::before { content: '\u{1FA78}'; }
+
+/* ---- Dialog / message box ---- */
+
+.pixel-dialog {
+  background: var(--pixel-bg-dark);
+  border: 4px solid var(--pixel-text);
+  box-shadow:
+    inset -4px -4px 0 rgba(0, 0, 0, 0.5),
+    inset 4px 4px 0 rgba(255, 255, 255, 0.1),
+    8px 8px 0 rgba(0, 0, 0, 0.3);
+  padding: 12px 16px;
+}
+
+/* ---- Quest/task status badges ---- */
+
+.pixel-badge {
+  padding: 2px 6px;
+  border: 2px solid;
+  font-size: 6px;
+  line-height: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow:
+    inset -1px -1px 0 rgba(0, 0, 0, 0.3),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+/* ---- Background pattern ---- */
+
+.pixel-bg-pattern {
+  background-color: var(--pixel-bg);
+  background-image:
+    linear-gradient(45deg, var(--pixel-bg-dark) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--pixel-bg-dark) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--pixel-bg-dark) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--pixel-bg-dark) 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+}

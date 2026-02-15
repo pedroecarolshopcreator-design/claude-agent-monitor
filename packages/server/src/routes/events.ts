@@ -34,7 +34,8 @@ eventsRouter.post('/', (req: Request, res: Response) => {
 });
 
 // GET /api/sessions/:id/events - List events for a session
-eventsRouter.get('/sessions/:id/events', (req: Request, res: Response) => {
+// Note: This route is mounted on /api/sessions, so the path here is /:id/events
+eventsRouter.get('/:id/events', (req: Request, res: Response) => {
   try {
     const sessionId = req.params['id']!;
     const category = req.query['category'] as string | undefined;
