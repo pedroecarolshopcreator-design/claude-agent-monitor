@@ -1423,6 +1423,18 @@ function handleGeneralToolEvent(event: AgentEvent): void {
  */
 export function correlateEvent(event: AgentEvent): void {
   try {
+    // --- Guard: skip events that can never produce useful correlation ---
+    // PreToolUse fires BEFORE the tool runs - no output, no result to correlate.
+    // Only PostToolUse has the complete picture (input + output + duration).
+    if (event.hookType === 'PreToolUse') return;
+
+    // Skip lifecycle events that have no tool context
+    if (event.hookType === 'Notification' || event.hookType === 'PreCompact' ||
+        event.hookType === 'PostCompact' || event.hookType === 'SubagentStop') return;
+
+    // Skip events with no meaningful tool name
+    if (event.tool === 'unknown' || event.tool === '') return;
+
     // --- Path 0: Session-Project binding on SessionStart ---
     if (event.hookType === 'SessionStart') {
       const workingDirectory =

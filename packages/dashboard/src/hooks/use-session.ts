@@ -67,7 +67,7 @@ export function useSession() {
     }
 
     fetchActiveSession();
-    const interval = setInterval(fetchActiveSession, 10_000);
+    const interval = setInterval(fetchActiveSession, 30_000);
 
     return () => {
       cancelled = true;

@@ -595,30 +595,36 @@ function persistEvent(event: AgentEvent, now: string): void {
 
   // Update agent status
   if (event.hookType === "PreToolUse" || event.hookType === "PostToolUse") {
-    // Only count tool calls on PostToolUse to avoid double counting
+    // Only count tool calls and broadcast status on PostToolUse
+    // PreToolUse only updates lastActivityAt silently (no SSE broadcast)
     if (event.hookType === "PostToolUse") {
       agentQueries
         .incrementToolCalls()
         .run(now, event.agentId, event.sessionId);
-    }
-    agentQueries
-      .updateStatus()
-      .run("active", now, event.agentId, event.sessionId);
+      agentQueries
+        .updateStatus()
+        .run("active", now, event.agentId, event.sessionId);
 
-    const activePayload = {
-      agent: event.agentId,
-      sessionId: event.sessionId,
-      status: "active",
-    };
-    sseManager.broadcast("agent_status", activePayload, event.sessionId);
-    const gidActive = getGroupIdForSession(event.sessionId);
-    if (gidActive) {
-      broadcastToGroupExcluding(
-        gidActive,
-        "agent_status",
-        activePayload,
-        event.sessionId,
-      );
+      const activePayload = {
+        agent: event.agentId,
+        sessionId: event.sessionId,
+        status: "active",
+      };
+      sseManager.broadcast("agent_status", activePayload, event.sessionId);
+      const gidActive = getGroupIdForSession(event.sessionId);
+      if (gidActive) {
+        broadcastToGroupExcluding(
+          gidActive,
+          "agent_status",
+          activePayload,
+          event.sessionId,
+        );
+      }
+    } else {
+      // PreToolUse: just update timestamp, no SSE broadcast
+      agentQueries
+        .updateStatus()
+        .run("active", now, event.agentId, event.sessionId);
     }
   }
 

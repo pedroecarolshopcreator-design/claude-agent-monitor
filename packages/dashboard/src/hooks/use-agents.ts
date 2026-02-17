@@ -26,7 +26,7 @@ export function useAgents() {
     }
 
     fetchAgents();
-    const interval = setInterval(fetchAgents, 5_000);
+    const interval = setInterval(fetchAgents, 15_000);
 
     return () => {
       cancelled = true;
