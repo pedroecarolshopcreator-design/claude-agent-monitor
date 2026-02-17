@@ -5,6 +5,7 @@ import { z } from 'zod';
 export const hookTypeSchema = z.enum([
   'PreToolUse',
   'PostToolUse',
+  'PostToolUseFailure',
   'Notification',
   'Stop',
   'SubagentStop',

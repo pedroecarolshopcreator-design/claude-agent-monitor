@@ -17,6 +17,7 @@ export interface AgentEvent {
 export type HookType =
   | 'PreToolUse'
   | 'PostToolUse'
+  | 'PostToolUseFailure'
   | 'Notification'
   | 'Stop'
   | 'SubagentStop'

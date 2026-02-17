@@ -17,6 +17,7 @@
 
 import { handlePreToolUse } from "./handlers/pre-tool-use.js";
 import { handlePostToolUse } from "./handlers/post-tool-use.js";
+import { handlePostToolUseFailure } from "./handlers/post-tool-use-failure.js";
 import { handleNotification } from "./handlers/notification.js";
 import { handleStop } from "./handlers/stop.js";
 import { handleSubagentStop } from "./handlers/subagent-stop.js";
@@ -48,6 +49,9 @@ process.stdin.on("end", () => {
       break;
     case "post-tool-use":
       handlePostToolUse(stdinData);
+      break;
+    case "post-tool-use-failure":
+      handlePostToolUseFailure(stdinData);
       break;
     case "notification":
       handleNotification(stdinData);

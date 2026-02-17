@@ -24,7 +24,12 @@ import {
 import {
   autoCompleteTasksForSession,
   autoCompleteTasksForAgent,
+  markPrdTaskCompleted,
 } from "./task-completion.js";
+import {
+  prdTaskQueries,
+  agentTaskBindingQueries,
+} from "../db/queries.js";
 
 /**
  * Track spawned subagents per session for SubagentStop correlation.
@@ -73,7 +78,11 @@ function categorizeEvent(hookType: HookType, toolName?: string): EventCategory {
     hookType === "UserPromptSubmit"
   )
     return "lifecycle";
-  if (hookType === "ToolError" || hookType === "PreToolUseRejected")
+  if (
+    hookType === "ToolError" ||
+    hookType === "PreToolUseRejected" ||
+    hookType === "PostToolUseFailure"
+  )
     return "error";
 
   if (toolName) {
@@ -616,6 +625,17 @@ function persistEvent(event: AgentEvent, now: string): void {
           event.timestamp,
         );
     }
+
+    // === TaskCompleted Detection (GOLD correlation path) ===
+    // When Claude's TaskUpdate marks a task as completed, try to match
+    // the subject against PRD tasks for direct auto-completion.
+    if (status === "completed") {
+      try {
+        handleTaskCompleted(event, input);
+      } catch {
+        // TaskCompleted correlation errors must not break event processing
+      }
+    }
   }
 
   // Enrich SendMessage metadata with parsed recipient/content
@@ -685,6 +705,127 @@ function persistEvent(event: AgentEvent, now: string): void {
       event.duration || null,
       event.metadata ? JSON.stringify(event.metadata) : null,
     );
+}
+
+// ---------------------------------------------------------------------------
+// TaskCompleted Detection - GOLD correlation path
+// ---------------------------------------------------------------------------
+
+/**
+ * When Claude Code's TaskUpdate tool marks a task as "completed", we extract
+ * the subject and try to match it directly against PRD task titles.
+ * This is the highest-confidence correlation path (confidence 1.0) because
+ * the agent explicitly declared the task as done.
+ */
+function handleTaskCompleted(
+  event: AgentEvent,
+  input: Record<string, unknown>,
+): void {
+  const subject = (input["subject"] as string) || "";
+  if (!subject || subject === "Updated Task") return;
+
+  // Get the project for this session
+  const projectId = getProjectForSession(event.sessionId);
+  if (!projectId) return;
+
+  // Normalize subject for matching: lowercase, strip common prefixes
+  const normalizedSubject = subject
+    .toLowerCase()
+    .replace(/^\[cam:[^\]]*\]\s*/, "")
+    .trim();
+
+  if (normalizedSubject.length < 5) return;
+
+  // Strategy 1: Exact LIKE match (most reliable)
+  const likePattern = `%${normalizedSubject.slice(0, 60)}%`;
+  const exactMatches = prdTaskQueries
+    .findByTitle()
+    .all(projectId, likePattern) as Array<Record<string, unknown>>;
+
+  // Filter to completable tasks (not already completed, deferred, or backlog)
+  const completable = exactMatches.filter((t) => {
+    const taskStatus = t["status"] as string;
+    return (
+      taskStatus !== "completed" &&
+      taskStatus !== "deferred" &&
+      taskStatus !== "backlog"
+    );
+  });
+
+  if (completable.length === 1) {
+    // Single match = high confidence, auto-complete
+    const task = completable[0]!;
+    const taskId = task["id"] as string;
+    const taskTitle = task["title"] as string;
+    const reason = `TaskCompleted GOLD path: agent ${event.agentId} marked "${subject}" as completed (matched PRD task "${taskTitle}")`;
+
+    markPrdTaskCompleted(taskId, reason);
+
+    // Create high-confidence binding for audit trail
+    agentTaskBindingQueries
+      .bind()
+      .run(
+        randomUUID(),
+        event.agentId,
+        event.sessionId,
+        taskId,
+        1.0,
+        event.timestamp,
+      );
+
+    // Broadcast task completion
+    sseManager.broadcast("task_completed", {
+      taskId,
+      taskTitle,
+      agentId: event.agentId,
+      sessionId: event.sessionId,
+      source: "gold_path",
+      confidence: 1.0,
+    });
+
+    console.log(
+      `[task-completed] GOLD: "${subject}" -> PRD task "${taskTitle}" (${taskId})`,
+    );
+    return;
+  }
+
+  // Strategy 2: If multiple matches, try exact title match
+  if (completable.length > 1) {
+    const exactTitleMatch = completable.find(
+      (t) => (t["title"] as string).toLowerCase() === normalizedSubject,
+    );
+    if (exactTitleMatch) {
+      const taskId = exactTitleMatch["id"] as string;
+      const taskTitle = exactTitleMatch["title"] as string;
+      const reason = `TaskCompleted GOLD path (exact title): agent ${event.agentId} completed "${subject}"`;
+
+      markPrdTaskCompleted(taskId, reason);
+
+      agentTaskBindingQueries
+        .bind()
+        .run(
+          randomUUID(),
+          event.agentId,
+          event.sessionId,
+          taskId,
+          1.0,
+          event.timestamp,
+        );
+
+      sseManager.broadcast("task_completed", {
+        taskId,
+        taskTitle,
+        agentId: event.agentId,
+        sessionId: event.sessionId,
+        source: "gold_path_exact",
+        confidence: 1.0,
+      });
+
+      console.log(
+        `[task-completed] GOLD (exact): "${subject}" -> PRD task "${taskTitle}" (${taskId})`,
+      );
+    }
+  }
 }
 
 /**

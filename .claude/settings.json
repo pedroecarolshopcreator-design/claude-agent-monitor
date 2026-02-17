@@ -129,6 +129,17 @@
           }
         ]
       }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash scripts/cam-hook.sh post-tool-use-failure"
+          }
+        ]
+      }
     ]
   }
 }
