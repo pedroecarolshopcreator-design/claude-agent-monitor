@@ -254,6 +254,81 @@ The `cam-hook` binary is designed to be ultra-fast (< 10ms) and fail silently. I
 
 ---
 
+## WSL Setup (Windows Subsystem for Linux)
+
+If you run Claude Code inside WSL2 and the CAM server on Windows (or vice versa), there are a few things to know.
+
+### How it works
+
+The `cam-hook` binary auto-detects WSL by reading `/proc/version`. When WSL is detected, it resolves the Windows host IP via the default gateway (`ip route show default`) or the nameserver in `/etc/resolv.conf`. This means **no manual configuration is needed** in most cases.
+
+If auto-detection doesn't work, you can set the host explicitly:
+
+```bash
+export CAM_SERVER_HOST=172.20.0.1   # Replace with your Windows host IP
+```
+
+### tmux is OPTIONAL
+
+Some guides suggest using tmux to run Claude Code agents in split panes. This is entirely optional. CAM works with or without tmux:
+
+- **Without tmux**: Run `cam start` in one terminal and `claude` in another. The hook binary sends events to the CAM server directly.
+- **With tmux**: Useful for monitoring multiple agents side by side, but the dashboard already provides this view.
+
+### Transport resilience
+
+The hook binary includes built-in resilience:
+
+1. Tries the detected/configured host first
+2. Falls back to `localhost` and `127.0.0.1` if the primary host fails
+3. Exponential backoff between retries (max 3 attempts)
+4. Always fails silently -- never blocks Claude Code
+
+### Debug mode
+
+If events are not arriving at the dashboard, enable debug logging:
+
+```bash
+export CAM_DEBUG=1
+```
+
+This prints diagnostic information to stderr, showing which host the hook is trying and any connection errors:
+
+```
+[cam-hook] WSL detected, resolving Windows host IP...
+[cam-hook] Resolved via default gateway: 172.20.0.1
+[cam-hook] POST to 172.20.0.1:7890 (attempt 1/3)
+[cam-hook] Event delivered via 172.20.0.1
+```
+
+### Diagnostic script
+
+A diagnostic script is included to verify the full hook-to-server pipeline:
+
+```bash
+bash scripts/test-wsl-hook.sh
+```
+
+This tests:
+1. Node.js is available in PATH (tries nvm if not)
+2. Default gateway resolution
+3. Server connectivity via gateway and localhost
+4. Hook binary sends an event successfully
+5. Event arrives at the server
+
+### Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| Events not arriving | Run `CAM_DEBUG=1 cam-hook pre-tool-use < /dev/null` to see where it tries to connect |
+| `ECONNREFUSED` on all hosts | Make sure the CAM server is running (`cam start` or `pnpm dev`) |
+| Gateway IP wrong | Set `CAM_SERVER_HOST` explicitly: `export CAM_SERVER_HOST=<windows-ip>` |
+| Node not found in WSL | Ensure Node.js is installed in WSL or that nvm is configured in your shell profile |
+| Hook takes too long | Check network: `curl -s http://<host>:7890/api/sessions`. The hook has a 5s process timeout |
+| Server runs in WSL, dashboard on Windows | Set server bind host to `0.0.0.0`: `cam start --bind 0.0.0.0` |
+
+---
+
 ## Development
 
 ### Prerequisites

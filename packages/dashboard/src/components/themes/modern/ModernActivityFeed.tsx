@@ -1,33 +1,82 @@
-import { useRef, useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useSessionStore } from '../../../stores/session-store';
-import { useFilterStore } from '../../../stores/filter-store';
-import { useEvents } from '../../../hooks/use-events';
+import { useRef, useEffect, useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useSessionStore } from "../../../stores/session-store";
+import { useFilterStore } from "../../../stores/filter-store";
+import { useEvents } from "../../../hooks/use-events";
+import { formatTimestamp, getCategoryColor } from "../../../lib/formatters";
 import {
-  formatTimestamp,
-  getCategoryColor,
-  truncatePath,
-} from '../../../lib/formatters';
-import type { AgentEvent } from '@cam/shared';
+  getAgentDisplayName,
+  extractFilename,
+} from "../../../lib/friendly-names.js";
+import type { AgentEvent } from "@cam/shared";
+
+const POLLING_TOOLS = new Set(["TaskList", "TaskGet"]);
+
+interface GroupedEvent {
+  event: AgentEvent;
+  count: number;
+  groupId: string;
+}
+
+function groupConsecutiveEvents(events: AgentEvent[]): GroupedEvent[] {
+  const result: GroupedEvent[] = [];
+  let i = 0;
+  while (i < events.length) {
+    const current = events[i];
+    if (current.tool && POLLING_TOOLS.has(current.tool)) {
+      let count = 1;
+      while (
+        i + count < events.length &&
+        events[i + count].tool === current.tool &&
+        events[i + count].agentId === current.agentId
+      ) {
+        count++;
+      }
+      result.push({ event: current, count, groupId: `grp-${current.id}` });
+      i += count;
+    } else {
+      result.push({ event: current, count: 1, groupId: current.id });
+      i++;
+    }
+  }
+  return result;
+}
 
 const TOOL_ICONS: Record<string, string> = {
-  Edit: '\u270F',
-  Write: '\u2795',
-  Read: '\u{1F441}',
-  Bash: '\u{1F4BB}',
-  Grep: '\u{1F50D}',
-  Glob: '\u{1F4C2}',
-  TaskCreate: '\u{2795}',
-  TaskUpdate: '\u{1F504}',
-  TaskList: '\u{1F4CB}',
-  SendMessage: '\u{1F4AC}',
-  WebFetch: '\u{1F310}',
-  WebSearch: '\u{1F50E}',
+  Edit: "\u270F",
+  Write: "\u2795",
+  Read: "\u{1F441}",
+  Bash: "\u{1F4BB}",
+  Grep: "\u{1F50D}",
+  Glob: "\u{1F4C2}",
+  TaskCreate: "\u{2795}",
+  TaskUpdate: "\u{1F504}",
+  TaskList: "\u{1F4CB}",
+  SendMessage: "\u{1F4AC}",
+  WebFetch: "\u{1F310}",
+  WebSearch: "\u{1F50E}",
 };
 
 export function ModernActivityFeed() {
   const events = useEvents();
-  const { followMode, toggleFollowMode, searchQuery, setSearchQuery } = useFilterStore();
+  const agents = useSessionStore((s) => s.agents);
+  const {
+    followMode,
+    toggleFollowMode,
+    searchQuery,
+    setSearchQuery,
+    hidePolling,
+    toggleHidePolling,
+  } = useFilterStore();
+
+  // Build agent name lookup map
+  const agentNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const agent of agents) {
+      map.set(agent.id, getAgentDisplayName(agent.id, agent.name || agent.id));
+    }
+    return map;
+  }, [agents]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -37,15 +86,28 @@ export function ModernActivityFeed() {
     }
   }, [events.length, followMode]);
 
-  const filteredEvents = searchQuery
-    ? events.filter(
+  const filteredEvents = useMemo(() => {
+    let filtered = events;
+    if (hidePolling) {
+      filtered = filtered.filter((e) => !e.tool || !POLLING_TOOLS.has(e.tool));
+    }
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(
         (e) =>
-          e.tool?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          e.filePath?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          e.input?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          e.output?.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : events;
+          e.tool?.toLowerCase().includes(q) ||
+          e.filePath?.toLowerCase().includes(q) ||
+          e.input?.toLowerCase().includes(q) ||
+          e.output?.toLowerCase().includes(q),
+      );
+    }
+    return filtered;
+  }, [events, hidePolling, searchQuery]);
+
+  const groupedEvents = useMemo(
+    () => groupConsecutiveEvents(filteredEvents),
+    [filteredEvents],
+  );
 
   return (
     <div className="h-full flex flex-col">
@@ -67,16 +129,29 @@ export function ModernActivityFeed() {
             />
           </div>
 
+          {/* Hide Polling Toggle */}
+          <button
+            onClick={toggleHidePolling}
+            className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+              hidePolling
+                ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                : "bg-cam-surface-2 text-cam-text-muted border border-cam-border"
+            }`}
+            title="Hide TaskList/TaskGet polling events"
+          >
+            {hidePolling ? "Polling: Off" : "Polling"}
+          </button>
+
           {/* Follow Mode */}
           <button
             onClick={toggleFollowMode}
             className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
               followMode
-                ? 'bg-cam-accent/20 text-cam-accent border border-cam-accent/30'
-                : 'bg-cam-surface-2 text-cam-text-muted border border-cam-border'
+                ? "bg-cam-accent/20 text-cam-accent border border-cam-accent/30"
+                : "bg-cam-surface-2 text-cam-text-muted border border-cam-border"
             }`}
           >
-            {followMode ? 'Following' : 'Follow'}
+            {followMode ? "Following" : "Follow"}
           </button>
         </div>
       </div>
@@ -86,19 +161,31 @@ export function ModernActivityFeed() {
         {filteredEvents.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-8">
             <div className="w-12 h-12 rounded-full bg-cam-surface-2 border border-cam-border flex items-center justify-center mb-3">
-              <svg className="w-6 h-6 text-cam-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              <svg
+                className="w-6 h-6 text-cam-text-muted"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
               </svg>
             </div>
             <p className="text-sm text-cam-text-muted">No activity yet</p>
-            <p className="text-xs text-cam-text-muted mt-1">Events will appear here in real-time</p>
+            <p className="text-xs text-cam-text-muted mt-1">
+              Events will appear here in real-time
+            </p>
           </div>
         ) : (
           <div className="divide-y divide-cam-border/20">
             <AnimatePresence initial={false}>
-              {filteredEvents.map((event) => (
+              {groupedEvents.map(({ event, count, groupId }) => (
                 <motion.div
-                  key={event.id}
+                  key={groupId}
                   initial={{ opacity: 0, y: -8 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
@@ -106,7 +193,9 @@ export function ModernActivityFeed() {
                 >
                   <EventItem
                     event={event}
+                    agentNameMap={agentNameMap}
                     isExpanded={expandedId === event.id}
+                    groupCount={count}
                     onToggle={() =>
                       setExpandedId(expandedId === event.id ? null : event.id)
                     }
@@ -123,20 +212,25 @@ export function ModernActivityFeed() {
 
 function EventItem({
   event,
+  agentNameMap,
   isExpanded,
+  groupCount,
   onToggle,
 }: {
   event: AgentEvent;
+  agentNameMap: Map<string, string>;
   isExpanded: boolean;
+  groupCount?: number;
   onToggle: () => void;
 }) {
-  const icon = TOOL_ICONS[event.tool || ''] || '\u25CF';
+  const icon = TOOL_ICONS[event.tool || ""] || "\u25CF";
   const categoryColor = getCategoryColor(event.category);
+  const agentDisplayName = agentNameMap.get(event.agentId) ?? event.agentId;
 
   return (
     <div
       className={`px-4 py-2 hover:bg-cam-surface/40 cursor-pointer transition-colors ${
-        isExpanded ? 'bg-cam-surface/30' : ''
+        isExpanded ? "bg-cam-surface/30" : ""
       }`}
       onClick={onToggle}
     >
@@ -149,19 +243,33 @@ function EventItem({
           <div className="flex items-center gap-2">
             <span className={`text-xs font-medium ${categoryColor}`}>
               {event.tool || event.hookType}
+              {groupCount && groupCount > 1 && (
+                <span className="ml-1 px-1 py-0 rounded bg-cam-surface-2 text-cam-text-muted text-[9px]">
+                  x{groupCount}
+                </span>
+              )}
             </span>
-            <span className="text-[10px] text-cam-text-muted">
-              {event.agentId}
+            <span
+              className="text-[10px] text-cam-text-muted"
+              title={event.agentId}
+            >
+              {agentDisplayName}
             </span>
             {event.filePath && (
-              <span className="text-[10px] text-cam-text-secondary font-mono truncate">
-                {truncatePath(event.filePath)}
+              <span
+                className="text-[10px] text-cam-text-secondary font-mono truncate"
+                title={event.filePath}
+              >
+                {extractFilename(event.filePath)}
               </span>
             )}
           </div>
 
           {event.error && (
-            <p className="text-[11px] text-cam-error mt-0.5 truncate">
+            <p
+              className="text-[11px] text-cam-error mt-0.5"
+              title={event.error}
+            >
               {event.error}
             </p>
           )}
@@ -171,7 +279,7 @@ function EventItem({
             {isExpanded && (
               <motion.div
                 initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
+                animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 transition={{ duration: 0.15 }}
                 className="overflow-hidden"
@@ -179,7 +287,9 @@ function EventItem({
                 <div className="mt-2 space-y-2">
                   {event.input && (
                     <div>
-                      <span className="text-[10px] uppercase tracking-wider text-cam-text-muted">Input</span>
+                      <span className="text-[10px] uppercase tracking-wider text-cam-text-muted">
+                        Input
+                      </span>
                       <pre className="mt-0.5 text-[11px] text-cam-text-secondary font-mono bg-cam-bg rounded p-2 overflow-x-auto max-h-32 modern-scrollbar whitespace-pre-wrap break-all">
                         {event.input}
                       </pre>
@@ -187,7 +297,9 @@ function EventItem({
                   )}
                   {event.output && (
                     <div>
-                      <span className="text-[10px] uppercase tracking-wider text-cam-text-muted">Output</span>
+                      <span className="text-[10px] uppercase tracking-wider text-cam-text-muted">
+                        Output
+                      </span>
                       <pre className="mt-0.5 text-[11px] text-cam-text-secondary font-mono bg-cam-bg rounded p-2 overflow-x-auto max-h-32 modern-scrollbar whitespace-pre-wrap break-all">
                         {event.output}
                       </pre>

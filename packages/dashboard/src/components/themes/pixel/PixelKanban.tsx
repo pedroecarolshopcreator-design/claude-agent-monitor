@@ -100,13 +100,15 @@ export function PixelKanban() {
 }
 
 function QuestCard({ task }: { task: PRDTask }) {
+  const { selectTask, selectedTaskId } = useProjectStore();
   const difficulty = DIFFICULTY[task.priority] || DIFFICULTY.low;
   const agentColor = task.assignedAgent ? generateIdenticon(task.assignedAgent) : null;
   const isCompleted = task.status === 'completed';
 
   return (
     <div
-      className={`p-2 cursor-pointer ${isCompleted ? 'pixel-glow-gold' : 'pixel-border-light'}`}
+      className={`p-2 cursor-pointer ${isCompleted ? 'pixel-glow-gold' : selectedTaskId === task.id ? 'pixel-glow-green' : 'pixel-border-light'}`}
+      onClick={() => selectTask(task.id)}
       style={{
         background: 'var(--pixel-bg-dark)',
         opacity: isCompleted ? 0.85 : 1,

@@ -1,40 +1,93 @@
-import { useRef, useEffect, useState } from 'react';
-import { useFilterStore } from '../../../stores/filter-store';
-import { useEvents } from '../../../hooks/use-events';
-import { formatTimestamp, truncatePath } from '../../../lib/formatters';
-import type { AgentEvent } from '@cam/shared';
+import { useRef, useEffect, useState, useMemo } from "react";
+import { useSessionStore } from "../../../stores/session-store";
+import { useFilterStore } from "../../../stores/filter-store";
+import { useEvents } from "../../../hooks/use-events";
+import { formatTimestamp } from "../../../lib/formatters";
+import {
+  getAgentDisplayName,
+  extractFilename,
+} from "../../../lib/friendly-names.js";
+import type { AgentEvent } from "@cam/shared";
+
+const POLLING_TOOLS = new Set(["TaskList", "TaskGet"]);
+
+interface GroupedEvent {
+  event: AgentEvent;
+  count: number;
+  groupId: string;
+}
+
+function groupConsecutiveEvents(events: AgentEvent[]): GroupedEvent[] {
+  const result: GroupedEvent[] = [];
+  let i = 0;
+  while (i < events.length) {
+    const current = events[i];
+    if (current.tool && POLLING_TOOLS.has(current.tool)) {
+      let count = 1;
+      while (
+        i + count < events.length &&
+        events[i + count].tool === current.tool &&
+        events[i + count].agentId === current.agentId
+      ) {
+        count++;
+      }
+      result.push({ event: current, count, groupId: `grp-${current.id}` });
+      i += count;
+    } else {
+      result.push({ event: current, count: 1, groupId: current.id });
+      i++;
+    }
+  }
+  return result;
+}
 
 const TOOL_SYMBOLS: Record<string, string> = {
-  Edit: 'EDT',
-  Write: 'WRT',
-  Read: 'RD ',
-  Bash: 'SH ',
-  Grep: 'GRP',
-  Glob: 'GLB',
-  TaskCreate: 'T+ ',
-  TaskUpdate: 'T~ ',
-  TaskList: 'TL ',
-  SendMessage: 'MSG',
-  WebFetch: 'GET',
-  WebSearch: 'WEB',
+  Edit: "EDT",
+  Write: "WRT",
+  Read: "RD ",
+  Bash: "SH ",
+  Grep: "GRP",
+  Glob: "GLB",
+  TaskCreate: "T+ ",
+  TaskUpdate: "T~ ",
+  TaskList: "TL ",
+  SendMessage: "MSG",
+  WebFetch: "GET",
+  WebSearch: "WEB",
 };
 
 const CATEGORY_PREFIX: Record<string, string> = {
-  tool_call: 'TOOL',
-  file_change: 'FILE',
-  command: 'CMD ',
-  message: 'MSG ',
-  lifecycle: 'SYS ',
-  error: 'ERR ',
-  compact: 'CMP ',
-  notification: 'NTF ',
+  tool_call: "TOOL",
+  file_change: "FILE",
+  command: "CMD ",
+  message: "MSG ",
+  lifecycle: "SYS ",
+  error: "ERR ",
+  compact: "CMP ",
+  notification: "NTF ",
 };
 
 export function TerminalActivityFeed() {
   const events = useEvents();
-  const { followMode, toggleFollowMode, searchQuery, setSearchQuery } = useFilterStore();
+  const agents = useSessionStore((s) => s.agents);
+  const {
+    followMode,
+    toggleFollowMode,
+    searchQuery,
+    setSearchQuery,
+    hidePolling,
+    toggleHidePolling,
+  } = useFilterStore();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const agentNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const agent of agents) {
+      map.set(agent.id, getAgentDisplayName(agent.id, agent.name || agent.id));
+    }
+    return map;
+  }, [agents]);
 
   useEffect(() => {
     if (followMode && scrollRef.current) {
@@ -42,22 +95,35 @@ export function TerminalActivityFeed() {
     }
   }, [events.length, followMode]);
 
-  const filteredEvents = searchQuery
-    ? events.filter(
+  const filteredEvents = useMemo(() => {
+    let filtered = events;
+    if (hidePolling) {
+      filtered = filtered.filter((e) => !e.tool || !POLLING_TOOLS.has(e.tool));
+    }
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      filtered = filtered.filter(
         (e) =>
-          e.tool?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          e.filePath?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          e.input?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          e.output?.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : events;
+          e.tool?.toLowerCase().includes(q) ||
+          e.filePath?.toLowerCase().includes(q) ||
+          e.input?.toLowerCase().includes(q) ||
+          e.output?.toLowerCase().includes(q),
+      );
+    }
+    return filtered;
+  }, [events, hidePolling, searchQuery]);
+
+  const groupedEvents = useMemo(
+    () => groupConsecutiveEvents(filteredEvents),
+    [filteredEvents],
+  );
 
   return (
     <div className="h-full flex flex-col font-mono text-[11px]">
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-[#1a3a1a] shrink-0">
         <span className="terminal-muted">
-          {'## tail -f activity.log (' + filteredEvents.length + ' lines) ##'}
+          {"## tail -f activity.log (" + filteredEvents.length + " lines) ##"}
         </span>
         <div className="flex items-center gap-2">
           <div className="flex items-center">
@@ -71,35 +137,51 @@ export function TerminalActivityFeed() {
             />
           </div>
           <button
+            onClick={toggleHidePolling}
+            className={`px-2 py-0.5 font-mono text-[10px] border ${
+              hidePolling
+                ? "bg-[#1f1f0a] text-[#ffaa00] border-[#aa7700]"
+                : "bg-[#0d0d0d] text-[#006600] border-[#1a3a1a]"
+            }`}
+            title="Hide TaskList/TaskGet polling"
+          >
+            {hidePolling ? "[P]oll:OFF" : "[P]oll"}
+          </button>
+          <button
             onClick={toggleFollowMode}
             className={`px-2 py-0.5 font-mono text-[10px] border ${
               followMode
-                ? 'bg-[#0a1f0a] text-[#00ff00] border-[#00aa00] terminal-glow'
-                : 'bg-[#0d0d0d] text-[#006600] border-[#1a3a1a]'
+                ? "bg-[#0a1f0a] text-[#00ff00] border-[#00aa00] terminal-glow"
+                : "bg-[#0d0d0d] text-[#006600] border-[#1a3a1a]"
             }`}
           >
-            {followMode ? '[F]ollow:ON' : '[F]ollow:OFF'}
+            {followMode ? "[F]ollow:ON" : "[F]ollow:OFF"}
           </button>
         </div>
       </div>
 
       {/* Log Output */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto terminal-scrollbar">
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto terminal-scrollbar"
+      >
         {filteredEvents.length === 0 ? (
           <div className="p-4 text-center">
             <div className="terminal-dim">
-              <p>{'> No activity logged'}</p>
-              <p>{'> Waiting for events...'}</p>
-              <p className="mt-2 terminal-cursor">{'> '}</p>
+              <p>{"> No activity logged"}</p>
+              <p>{"> Waiting for events..."}</p>
+              <p className="mt-2 terminal-cursor">{"> "}</p>
             </div>
           </div>
         ) : (
           <div>
-            {filteredEvents.map((event) => (
+            {groupedEvents.map(({ event, count, groupId }) => (
               <LogLine
-                key={event.id}
+                key={groupId}
                 event={event}
+                agentNameMap={agentNameMap}
                 isExpanded={expandedId === event.id}
+                groupCount={count}
                 onToggle={() =>
                   setExpandedId(expandedId === event.id ? null : event.id)
                 }
@@ -114,21 +196,31 @@ export function TerminalActivityFeed() {
 
 function LogLine({
   event,
+  agentNameMap,
   isExpanded,
+  groupCount,
   onToggle,
 }: {
   event: AgentEvent;
+  agentNameMap: Map<string, string>;
   isExpanded: boolean;
+  groupCount?: number;
   onToggle: () => void;
 }) {
-  const toolSym = TOOL_SYMBOLS[event.tool || ''] || '...';
-  const catPrefix = CATEGORY_PREFIX[event.category] || '??? ';
-  const isError = event.category === 'error' || !!event.error;
+  const toolSym = TOOL_SYMBOLS[event.tool || ""] || "...";
+  const catPrefix = CATEGORY_PREFIX[event.category] || "??? ";
+  const isError = event.category === "error" || !!event.error;
+  const agentDisplayName =
+    agentNameMap.get(event.agentId) ?? event.agentId.slice(0, 8);
 
   return (
     <div
       className={`px-3 py-0.5 hover:bg-[#0a1a0a] cursor-pointer transition-colors border-l-2 ${
-        isError ? 'border-[#ff3333]' : isExpanded ? 'border-[#00ff00]' : 'border-transparent'
+        isError
+          ? "border-[#ff3333]"
+          : isExpanded
+            ? "border-[#00ff00]"
+            : "border-transparent"
       }`}
       onClick={onToggle}
     >
@@ -137,22 +229,25 @@ function LogLine({
         <span className="terminal-dim shrink-0 w-[60px]">
           {formatTimestamp(event.timestamp)}
         </span>
-        <span className={`shrink-0 w-[36px] ml-1 ${isError ? 'terminal-error' : 'terminal-muted'}`}>
+        <span
+          className={`shrink-0 w-[36px] ml-1 ${isError ? "terminal-error" : "terminal-muted"}`}
+        >
           {catPrefix}
         </span>
-        <span className="shrink-0 w-[28px] ml-1 text-[#00ccff]">
-          {toolSym}
-        </span>
-        <span className="terminal-dim shrink-0 ml-1">
-          [{event.agentId.slice(0, 8)}]
+        <span className="shrink-0 w-[28px] ml-1 text-[#00ccff]">{toolSym}</span>
+        {groupCount && groupCount > 1 && (
+          <span className="shrink-0 ml-1 text-[#ffaa00]">x{groupCount}</span>
+        )}
+        <span className="terminal-dim shrink-0 ml-1" title={event.agentId}>
+          [{agentDisplayName}]
         </span>
         {event.filePath && (
-          <span className="text-[#00aa00] ml-2 truncate">
-            {truncatePath(event.filePath)}
+          <span className="text-[#00aa00] ml-2 truncate" title={event.filePath}>
+            {extractFilename(event.filePath)}
           </span>
         )}
         {event.error && (
-          <span className="terminal-error ml-2 truncate">
+          <span className="terminal-error ml-2 truncate" title={event.error}>
             {event.error}
           </span>
         )}
@@ -168,7 +263,7 @@ function LogLine({
         <div className="ml-4 mt-1 mb-1 border-l border-[#1a3a1a] pl-2">
           {event.input && (
             <div className="mb-1">
-              <span className="terminal-muted">{'>>> INPUT:'}</span>
+              <span className="terminal-muted">{">>> INPUT:"}</span>
               <pre className="text-[10px] text-[#00aa00] whitespace-pre-wrap break-all mt-0.5 max-h-28 overflow-y-auto terminal-scrollbar bg-[#050505] p-1 border border-[#1a3a1a]">
                 {event.input}
               </pre>
@@ -176,7 +271,7 @@ function LogLine({
           )}
           {event.output && (
             <div className="mb-1">
-              <span className="terminal-muted">{'<<< OUTPUT:'}</span>
+              <span className="terminal-muted">{"<<< OUTPUT:"}</span>
               <pre className="text-[10px] text-[#00aa00] whitespace-pre-wrap break-all mt-0.5 max-h-28 overflow-y-auto terminal-scrollbar bg-[#050505] p-1 border border-[#1a3a1a]">
                 {event.output}
               </pre>
@@ -184,7 +279,7 @@ function LogLine({
           )}
           {event.duration !== undefined && (
             <span className="terminal-dim text-[10px]">
-              {'--- duration: ' + event.duration + 'ms ---'}
+              {"--- duration: " + event.duration + "ms ---"}
             </span>
           )}
         </div>

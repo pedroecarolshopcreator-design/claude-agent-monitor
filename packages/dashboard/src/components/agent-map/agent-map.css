@@ -1,0 +1,958 @@
+/* ========================================
+   Agent Map - Mission Floor v2 Layout
+   ========================================
+   Sizes calculated for optimal readability:
+   - Viewport: 1080p (1920x1080)
+   - Available height for workspace: ~740px
+   - Available width (MapLayout): ~1440px
+   - Target: 5 agents in hierarchy (2 rows)
+   - Sprite: pixelSize=6 → 96px (16×6)
+   - Card total height: ~212px
+   - 2 rows + gap + bubble = ~536px of 740px (72%)
+   ======================================== */
+
+/* --- Mission Floor Container --- */
+
+.mission-floor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.mission-floor-workspace {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: center;
+  gap: 32px;
+  padding: 64px 32px 32px;
+  justify-content: center;
+  min-height: 0;
+  background: radial-gradient(ellipse at 50% 100%, rgba(10, 10, 15, 0.6) 0%, transparent 70%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.mission-floor-inactive {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.mission-floor-inactive-label {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.25);
+  font-family: monospace;
+  white-space: nowrap;
+}
+
+/* --- Agent Card (Full Size - Workspace) --- */
+
+.agent-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+  position: relative;
+  padding: 20px;
+}
+
+.agent-card:hover {
+  transform: scale(1.05);
+  filter: brightness(1.1);
+}
+
+.agent-card.selected {
+  filter: drop-shadow(0 0 12px var(--agent-color));
+}
+
+.agent-card.selected::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border: 2px solid var(--agent-color);
+  border-radius: 10px;
+  animation: agent-glow 1.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes selection-pulse {
+  0% { box-shadow: 0 0 0 0 var(--agent-color); }
+  70% { box-shadow: 0 0 0 12px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.agent-card.just-selected {
+  animation: selection-pulse 0.5s ease-out;
+}
+
+.agent-card-sprite {
+  position: relative;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.agent-card-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.agent-card-name-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.agent-card-name {
+  font-size: 16px;
+  font-family: 'Courier New', monospace;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+
+.agent-card-pose-indicator {
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  opacity: 0.4;
+  color: #a1a1aa;
+}
+
+.agent-card-label {
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  white-space: normal;
+  word-break: break-word;
+  max-width: 220px;
+  text-align: center;
+  opacity: 0.5;
+  color: #a1a1aa;
+  line-height: 1.3;
+}
+
+/* --- Agent Card Compact (Inactive Bar) --- */
+
+.agent-card-compact {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 8px;
+  transition: transform 0.15s;
+  opacity: 0.5;
+}
+
+.agent-card-compact:hover {
+  opacity: 0.8;
+  transform: scale(1.1);
+}
+
+.agent-card-compact.selected {
+  opacity: 1;
+  filter: drop-shadow(0 0 6px var(--agent-color));
+}
+
+.agent-card-compact-name {
+  font-size: 12px;
+  font-family: 'Courier New', monospace;
+  max-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.7;
+}
+
+/* Tooltip on hover shows full name */
+.agent-card-compact:hover .agent-card-compact-name {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: unset;
+  max-width: none;
+}
+
+/* ========================================
+   Pixel Character Sprite
+   ======================================== */
+
+.pixel-character {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  width: 16px;
+  height: 16px;
+  position: relative;
+}
+
+.pixel-character-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.pixel-character-container:hover {
+  transform: scale(1.1);
+}
+
+.pixel-character-container.selected {
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
+/* Selection glow ring */
+.pixel-character-container.selected::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  animation: agent-glow 1.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes agent-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+/* ========================================
+   Agent Name / Activity Labels
+   ======================================== */
+
+.agent-name-tag {
+  font-size: 14px;
+  font-family: 'Courier New', monospace;
+  white-space: nowrap;
+  text-align: center;
+  opacity: 0.8;
+}
+
+.agent-activity-label {
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  white-space: normal;
+  word-break: break-word;
+  max-width: 220px;
+  text-align: center;
+  opacity: 0.5;
+  color: #a1a1aa;
+  line-height: 1.3;
+  margin-top: -2px;
+}
+
+/* ========================================
+   Sprite Animations - Legacy States
+   ======================================== */
+
+/* Idle: slow blink */
+@keyframes sprite-idle-blink {
+  0%, 90%, 100% { opacity: 1; }
+  95% { opacity: 0.3; }
+}
+
+.sprite-anim-idle .pixel-character {
+  animation: sprite-idle-blink 3s steps(1) infinite;
+}
+
+/* Working: typing bounce (legacy) */
+@keyframes sprite-working {
+  0%, 100% { transform: translateY(0); }
+  25% { transform: translateY(-4px); }
+  75% { transform: translateY(2px); }
+}
+
+.sprite-anim-working .pixel-character {
+  animation: sprite-working 0.6s steps(2) infinite;
+}
+
+/* Error: shake */
+@keyframes sprite-error-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.sprite-anim-error .pixel-character {
+  animation: sprite-error-shake 0.3s steps(2) infinite;
+}
+
+/* Completed: bounce */
+@keyframes sprite-completed-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.sprite-anim-completed .pixel-character {
+  animation: sprite-completed-bounce 0.8s ease-in-out infinite;
+}
+
+/* Shutdown: no animation on character, zzz handles it */
+.sprite-anim-shutdown .pixel-character {
+  opacity: 0.5;
+}
+
+/* ========================================
+   Sprite Animations - Pose-Specific (v2)
+   ======================================== */
+
+/* Coding: typing bounce */
+@keyframes sprite-coding {
+  0%, 100% { transform: translateY(0); }
+  25% { transform: translateY(-4px); }
+  75% { transform: translateY(2px); }
+}
+
+.sprite-anim-coding .pixel-character {
+  animation: sprite-coding 0.6s steps(2) infinite;
+}
+
+/* Reading: subtle breathing bob */
+@keyframes sprite-reading {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.sprite-anim-reading .pixel-character {
+  animation: sprite-reading 2s ease-in-out infinite;
+}
+
+/* Terminal: steady, no special animation */
+.sprite-anim-terminal .pixel-character {
+  /* intentionally no animation - steady stance */
+}
+
+/* Talking: slight bounce */
+@keyframes sprite-talking {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.sprite-anim-talking .pixel-character {
+  animation: sprite-talking 0.5s steps(2) infinite;
+}
+
+/* Searching: left-right scan */
+@keyframes sprite-searching {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(4px); }
+}
+
+.sprite-anim-searching .pixel-character {
+  animation: sprite-searching 1.5s ease-in-out infinite;
+}
+
+/* Managing: no special animation */
+.sprite-anim-managing .pixel-character {
+  /* intentionally no animation - steady stance */
+}
+
+/* Celebrating: jump bounce */
+@keyframes sprite-celebrating {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.sprite-anim-celebrating .pixel-character {
+  animation: sprite-celebrating 0.8s ease-in-out infinite;
+}
+
+/* ========================================
+   Working Particles (legacy)
+   ======================================== */
+
+@keyframes code-particle {
+  0% { opacity: 1; transform: translate(0, 0) scale(1); }
+  100% { opacity: 0; transform: translate(var(--px, 10px), var(--py, -15px)) scale(0.5); }
+}
+
+.working-particles {
+  position: absolute;
+  top: 0;
+  right: -8px;
+  pointer-events: none;
+}
+
+.working-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: currentColor;
+  animation: code-particle 1s ease-out infinite;
+  image-rendering: pixelated;
+}
+
+.working-particle:nth-child(1) { --px: 12px; --py: -18px; animation-delay: 0s; }
+.working-particle:nth-child(2) { --px: 18px; --py: -12px; animation-delay: 0.3s; }
+.working-particle:nth-child(3) { --px: 10px; --py: -24px; animation-delay: 0.6s; }
+
+/* ========================================
+   Coding Particles (v2 - code chars)
+   ======================================== */
+
+@keyframes code-char-particle {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-28px); }
+}
+
+.coding-particles {
+  position: absolute;
+  top: -4px;
+  right: -16px;
+  pointer-events: none;
+}
+
+.code-char {
+  position: absolute;
+  font-size: 14px;
+  font-family: monospace;
+  font-weight: bold;
+  animation: code-char-particle 1.2s ease-out infinite;
+}
+
+.code-char:nth-child(1) { animation-delay: 0s; }
+.code-char:nth-child(2) { animation-delay: 0.4s; }
+.code-char:nth-child(3) { animation-delay: 0.8s; }
+
+/* ========================================
+   Terminal Cursor (v2)
+   ======================================== */
+
+@keyframes terminal-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.terminal-cursor {
+  position: absolute;
+  bottom: 8px;
+  left: -16px;
+  width: 8px;
+  height: 4px;
+  background: #60a5fa;
+  animation: terminal-blink 0.8s steps(1) infinite;
+}
+
+/* ========================================
+   Error Indicator
+   ======================================== */
+
+.error-indicator {
+  position: absolute;
+  top: -18px;
+  right: -12px;
+  font-size: 20px;
+  animation: error-flash 0.8s steps(1) infinite;
+  pointer-events: none;
+}
+
+@keyframes error-flash {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* ========================================
+   Confetti (Completed State)
+   ======================================== */
+
+.confetti-container {
+  position: absolute;
+  inset: -16px;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+@keyframes confetti-fall {
+  0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(40px) rotate(360deg); opacity: 0; }
+}
+
+.confetti-piece {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  animation: confetti-fall 1.5s ease-out infinite;
+  image-rendering: pixelated;
+}
+
+.confetti-piece:nth-child(1) { left: 20%; background: #ff6b6b; animation-delay: 0s; }
+.confetti-piece:nth-child(2) { left: 40%; background: #ffd93d; animation-delay: 0.2s; }
+.confetti-piece:nth-child(3) { left: 60%; background: #6bcb77; animation-delay: 0.4s; }
+.confetti-piece:nth-child(4) { left: 80%; background: #4d96ff; animation-delay: 0.6s; }
+
+/* ========================================
+   Shutdown ZZZ
+   ======================================== */
+
+@keyframes zzz-float {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.5); }
+  50% { opacity: 1; transform: translate(10px, -16px) scale(1); }
+  100% { opacity: 0; transform: translate(20px, -32px) scale(0.7); }
+}
+
+.zzz-container {
+  position: absolute;
+  top: -8px;
+  right: -16px;
+  pointer-events: none;
+}
+
+.zzz-letter {
+  position: absolute;
+  font-size: 14px;
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  color: #6b7280;
+  animation: zzz-float 2s ease-in-out infinite;
+}
+
+.zzz-letter:nth-child(1) { animation-delay: 0s; }
+.zzz-letter:nth-child(2) { animation-delay: 0.5s; left: 8px; }
+.zzz-letter:nth-child(3) { animation-delay: 1s; left: 16px; }
+
+/* ========================================
+   Moving Transition
+   ======================================== */
+
+.sprite-anim-moving .pixel-character-container {
+  transition: all 0.5s ease-in-out;
+}
+
+/* ========================================
+   Speech Bubble - Pixel Art Style
+   ======================================== */
+
+.speech-bubble {
+  position: relative;
+  background: #1a1a2e;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  line-height: 1.4;
+  max-width: 280px;
+  border-radius: 10px;
+  white-space: normal;
+  word-break: break-word;
+  z-index: 10;
+  image-rendering: pixelated;
+  pointer-events: none;
+  /* Pixel art stepped border using box-shadow */
+  box-shadow:
+    /* outer border */
+    -2px 0 0 0 var(--bubble-color, #8b5cf6),
+    2px 0 0 0 var(--bubble-color, #8b5cf6),
+    0 -2px 0 0 var(--bubble-color, #8b5cf6),
+    0 2px 0 0 var(--bubble-color, #8b5cf6),
+    /* stepped corners */
+    -1px -1px 0 0 var(--bubble-color, #8b5cf6),
+    1px -1px 0 0 var(--bubble-color, #8b5cf6),
+    -1px 1px 0 0 var(--bubble-color, #8b5cf6),
+    1px 1px 0 0 var(--bubble-color, #8b5cf6);
+}
+
+/* Pixel art speech tail - stepped triangle pointing down */
+.speech-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 14px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 8px 5px 0 5px;
+  border-color: #1a1a2e transparent transparent transparent;
+  image-rendering: pixelated;
+}
+
+/* Tail border */
+.speech-bubble::before {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 13px;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 10px 6px 0 6px;
+  border-color: var(--bubble-color, #8b5cf6) transparent transparent transparent;
+  image-rendering: pixelated;
+}
+
+@keyframes bubble-appear {
+  0% { opacity: 0; transform: translateY(6px) scale(0.8); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes bubble-disappear {
+  0% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-8px) scale(0.9); }
+}
+
+.speech-bubble-enter {
+  animation: bubble-appear 0.25s ease-out forwards;
+}
+
+.speech-bubble-exit {
+  animation: bubble-disappear 0.4s ease-in forwards;
+}
+
+/* Speech bubble wrapper positioned above agent card */
+.speech-bubble-wrapper {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  transform: none;
+  margin-bottom: 8px;
+  max-width: 280px;
+  width: max-content;
+  z-index: 20;
+  pointer-events: none;
+}
+
+/* ========================================
+   Interaction Lines SVG Overlay
+   ======================================== */
+
+.interaction-lines-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  overflow: visible;
+}
+
+/* Animated dashed flow for message lines */
+@keyframes dash-flow {
+  to { stroke-dashoffset: -20; }
+}
+
+.interaction-line {
+  stroke-dasharray: 8 4;
+  animation: dash-flow 1s linear infinite;
+}
+
+/* Dotted flow for task_assign lines */
+@keyframes dash-flow-slow {
+  to { stroke-dashoffset: -16; }
+}
+
+.interaction-line-task {
+  stroke-dasharray: 3 5;
+  animation: dash-flow-slow 1.5s linear infinite;
+}
+
+/* Solid pulse for spawn lines */
+@keyframes spawn-line-pulse {
+  0% { stroke-opacity: 0.8; stroke-width: 2.5; }
+  50% { stroke-opacity: 0.3; stroke-width: 1.5; }
+  100% { stroke-opacity: 0; stroke-width: 1; }
+}
+
+.interaction-line-spawn {
+  stroke-dasharray: none;
+  animation: spawn-line-pulse 1s ease-out forwards;
+}
+
+/* Fade-out animation for all lines */
+@keyframes line-fade-out {
+  0% { opacity: 0.7; }
+  70% { opacity: 0.7; }
+  100% { opacity: 0; }
+}
+
+.interaction-line-fading {
+  animation: line-fade-out 5s ease-in forwards;
+}
+
+/* Traveling dot packet */
+.interaction-packet {
+  filter: drop-shadow(0 0 4px var(--packet-color, #8b5cf6));
+}
+
+/* ========================================
+   Agent Map Header
+   ======================================== */
+
+.agent-map-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ========================================
+   Spawn Animation - Portal Effect
+   ======================================== */
+
+@keyframes agent-spawn {
+  0% { opacity: 0; transform: scale(0) rotate(-180deg); }
+  60% { transform: scale(1.2) rotate(0deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
+.agent-spawn {
+  animation: agent-spawn 0.5s ease-out forwards;
+}
+
+/* Portal ring that expands behind the agent on spawn */
+@keyframes spawn-portal {
+  0% {
+    opacity: 0.8;
+    transform: scale(0);
+    box-shadow: 0 0 16px 6px var(--agent-color);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.8);
+    box-shadow: 0 0 28px 12px var(--agent-color);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2.5);
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+
+.agent-spawn-portal::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--agent-color);
+  animation: spawn-portal 0.7s ease-out forwards;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Brief flash of the agent's color on spawn */
+@keyframes spawn-flash {
+  0% { background: var(--agent-color); opacity: 0.4; }
+  100% { background: transparent; opacity: 0; }
+}
+
+.agent-spawn-portal::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 10px;
+  animation: spawn-flash 0.4s ease-out forwards;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ========================================
+   Shutdown Dissolve Animation
+   ======================================== */
+
+@keyframes agent-shutdown-dissolve {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    filter: none;
+  }
+  30% {
+    opacity: 0.7;
+    transform: scale(0.97);
+    filter: blur(0.5px);
+  }
+  60% {
+    opacity: 0.4;
+    transform: scale(0.93);
+    filter: blur(1px);
+  }
+  100% {
+    opacity: 0.25;
+    transform: scale(0.9);
+    filter: blur(0px);
+  }
+}
+
+.agent-shutdown-dissolve {
+  animation: agent-shutdown-dissolve 0.8s ease-out forwards;
+}
+
+/* Pixel scatter effect for shutdown */
+@keyframes pixel-scatter {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--scatter-x, 10px), var(--scatter-y, -10px));
+  }
+}
+
+.shutdown-scatter-container {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.scatter-pixel {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  background: var(--agent-color);
+  image-rendering: pixelated;
+  animation: pixel-scatter 0.8s ease-out forwards;
+}
+
+.scatter-pixel:nth-child(1) { top: 20%; left: 30%; --scatter-x: -18px; --scatter-y: -20px; animation-delay: 0.05s; }
+.scatter-pixel:nth-child(2) { top: 40%; left: 70%; --scatter-x: 20px; --scatter-y: -16px; animation-delay: 0.1s; }
+.scatter-pixel:nth-child(3) { top: 60%; left: 20%; --scatter-x: -16px; --scatter-y: 18px; animation-delay: 0.15s; }
+.scatter-pixel:nth-child(4) { top: 30%; left: 50%; --scatter-x: 12px; --scatter-y: -24px; animation-delay: 0.2s; }
+.scatter-pixel:nth-child(5) { top: 70%; left: 60%; --scatter-x: 18px; --scatter-y: 16px; animation-delay: 0.25s; }
+.scatter-pixel:nth-child(6) { top: 50%; left: 40%; --scatter-x: -14px; --scatter-y: 20px; animation-delay: 0.3s; }
+
+/* ========================================
+   Parent-Child Hierarchy Lines
+   ======================================== */
+
+.hierarchy-lines-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+  overflow: visible;
+}
+
+.hierarchy-line {
+  stroke-dasharray: 4 4;
+  stroke-linecap: round;
+}
+
+/* ========================================
+   Hierarchy Grouping in Workspace
+   ======================================== */
+
+.agent-hierarchy-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 40px;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  align-content: center;
+}
+
+.agent-hierarchy-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+}
+
+/* Subtle vertical connector line from root to children area */
+.agent-hierarchy-group::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* Hide connector when there are no children */
+.agent-hierarchy-group:not(:has(.agent-hierarchy-children))::after {
+  display: none;
+}
+
+.agent-hierarchy-root {
+  position: relative;
+  z-index: 2;
+}
+
+.agent-hierarchy-children {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  justify-content: center;
+  padding: 6px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 0 0 8px 8px;
+  position: relative;
+}
+
+/* ========================================
+   Tool Trail (last 5 tools as mini badges)
+   ======================================== */
+
+.tool-trail {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  margin-top: 3px;
+}
+
+.tool-trail-badge {
+  font-size: 10px;
+  font-family: 'Courier New', monospace;
+  padding: 1px 4px;
+  border-radius: 3px;
+  line-height: 1.3;
+  opacity: 0.6;
+  white-space: nowrap;
+}
+
+.tool-trail-badge:hover {
+  opacity: 1;
+}
+
+/* ========================================
+   Agent Timer (live elapsed counter)
+   ======================================== */
+
+.agent-timer {
+  font-size: 12px;
+  font-family: 'Courier New', monospace;
+  opacity: 0.5;
+  white-space: nowrap;
+}
+
+/* ========================================
+   Responsive
+   ======================================== */
+
+@media (max-width: 900px) {
+  .mission-floor-workspace {
+    gap: 20px;
+    padding: 40px 16px 16px;
+  }
+
+  .agent-hierarchy-container {
+    gap: 24px;
+  }
+}
+
+@media (max-width: 500px) {
+  .mission-floor-workspace {
+    gap: 16px;
+    padding: 32px 12px 12px;
+  }
+
+  .agent-hierarchy-container {
+    gap: 20px;
+  }
+
+  .agent-hierarchy-children {
+    gap: 16px;
+  }
+}

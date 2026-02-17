@@ -3,17 +3,23 @@ import { useSessionStore } from '../stores/session-store';
 import * as api from '../lib/api';
 
 export function useAgents() {
-  const { session, agents, setAgents } = useSessionStore();
+  const { session, groupId, agents, setAgents } = useSessionStore();
 
   useEffect(() => {
-    if (!session?.id) return;
+    if (!session?.id && !groupId) return;
 
     let cancelled = false;
 
     async function fetchAgents() {
       try {
-        const { agents: data } = await api.getAgents(session!.id);
-        if (!cancelled) setAgents(data);
+        // Prefer group agents when a session group is active
+        if (groupId) {
+          const { agents: data } = await api.fetchSessionGroupAgents(groupId);
+          if (!cancelled) setAgents(data);
+        } else if (session?.id) {
+          const { agents: data } = await api.getAgents(session.id);
+          if (!cancelled) setAgents(data);
+        }
       } catch {
         // ignore
       }
@@ -26,7 +32,7 @@ export function useAgents() {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [session?.id, setAgents]);
+  }, [session?.id, groupId, setAgents]);
 
   return agents;
 }

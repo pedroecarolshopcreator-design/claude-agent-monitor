@@ -1,6 +1,7 @@
 import { useProjectStore, type ViewMode } from '../../../stores/project-store';
 
 const VIEW_OPTIONS: { id: ViewMode; label: string; icon: string }[] = [
+  { id: 'map', label: 'MAP', icon: '[A]' },
   { id: 'monitor', label: 'MONITOR', icon: '[M]' },
   { id: 'tracker', label: 'TRACKER', icon: '[T]' },
   { id: 'mission-control', label: 'MISSION', icon: '[C]' },

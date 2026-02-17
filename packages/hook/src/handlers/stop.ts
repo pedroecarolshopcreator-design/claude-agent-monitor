@@ -1,19 +1,18 @@
-import { sendEvent } from '../transport.js';
+import { sendEvent } from "../transport.js";
 
-export function handleStop(): void {
-  const sessionId = process.env.CLAUDE_SESSION_ID ?? '';
-  const agentId = process.env.CLAUDE_AGENT_ID ?? 'main';
-  const reason = process.env.CLAUDE_STOP_REASON ?? 'unknown';
-  const stopType = process.env.CLAUDE_STOP_TYPE ?? 'natural';
+export function handleStop(stdinData: Record<string, unknown>): void {
+  const sessionId = (stdinData["session_id"] as string) ?? "";
+  const stopHookActive = stdinData["stop_hook_active"] as boolean | undefined;
 
   sendEvent({
-    hook: 'Stop',
+    hook: "Stop",
     timestamp: new Date().toISOString(),
     session_id: sessionId,
-    agent_id: agentId,
+    agent_id: sessionId || "main",
     data: {
-      reason,
-      stop_type: stopType,
+      reason: stopHookActive ? "stop_hook" : "natural",
+      stop_type: "natural",
+      stop_hook_active: stopHookActive,
     },
   });
 }

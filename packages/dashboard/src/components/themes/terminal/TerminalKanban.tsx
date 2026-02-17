@@ -95,10 +95,14 @@ export function TerminalKanban() {
 }
 
 function KanbanCard({ task }: { task: PRDTask }) {
+  const { selectTask, selectedTaskId } = useProjectStore();
   const priChar = PRIORITY_CHARS[task.priority] || '   ';
 
   return (
-    <div className="terminal-card p-1.5 text-[10px]">
+    <div
+      className={`terminal-card p-1.5 text-[10px] cursor-pointer ${selectedTaskId === task.id ? 'border border-[#00ccff]' : ''}`}
+      onClick={() => selectTask(task.id)}
+    >
       {/* Top row: priority + complexity */}
       <div className="flex items-center gap-1 mb-0.5">
         <span className={`${task.priority === 'critical' || task.priority === 'high' ? 'terminal-error' : 'terminal-dim'}`}>

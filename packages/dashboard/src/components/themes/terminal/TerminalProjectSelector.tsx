@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useProjectStore, type ViewMode } from '../../../stores/project-store';
 
 const VIEW_MODES: { id: ViewMode; label: string; key: string; description: string }[] = [
+  { id: 'map', label: 'AgentMap', key: '0', description: 'Pixel art agent visualization' },
   { id: 'monitor', label: 'Monitor', key: '1', description: 'Real-time agent activity' },
   { id: 'tracker', label: 'Tracker', key: '2', description: 'PRD & sprint tracking' },
   { id: 'mission-control', label: 'MissionCtrl', key: '3', description: 'Combined view' },

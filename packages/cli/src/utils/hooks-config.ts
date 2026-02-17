@@ -1,5 +1,5 @@
 export interface HookHandler {
-  type: 'command';
+  type: "command";
   command: string;
   timeout?: number;
 }
@@ -16,43 +16,49 @@ export interface HooksConfig {
   Stop: HookEntry[];
   SubagentStop: HookEntry[];
   PreCompact: HookEntry[];
+  PostCompact: HookEntry[];
 }
 
-const CAM_HOOK_MARKER = 'cam-hook';
+const CAM_HOOK_MARKER = "cam-hook";
 
 export function generateHooksConfig(): HooksConfig {
   return {
     PreToolUse: [
       {
-        matcher: '*',
-        hooks: [{ type: 'command', command: 'cam-hook pre-tool-use' }],
+        matcher: "*",
+        hooks: [{ type: "command", command: "cam-hook pre-tool-use" }],
       },
     ],
     PostToolUse: [
       {
-        matcher: '*',
-        hooks: [{ type: 'command', command: 'cam-hook post-tool-use' }],
+        matcher: "*",
+        hooks: [{ type: "command", command: "cam-hook post-tool-use" }],
       },
     ],
     Notification: [
       {
-        matcher: '*',
-        hooks: [{ type: 'command', command: 'cam-hook notification' }],
+        matcher: "*",
+        hooks: [{ type: "command", command: "cam-hook notification" }],
       },
     ],
     Stop: [
       {
-        hooks: [{ type: 'command', command: 'cam-hook stop' }],
+        hooks: [{ type: "command", command: "cam-hook stop" }],
       },
     ],
     SubagentStop: [
       {
-        hooks: [{ type: 'command', command: 'cam-hook subagent-stop' }],
+        hooks: [{ type: "command", command: "cam-hook subagent-stop" }],
       },
     ],
     PreCompact: [
       {
-        hooks: [{ type: 'command', command: 'cam-hook pre-compact' }],
+        hooks: [{ type: "command", command: "cam-hook pre-compact" }],
+      },
+    ],
+    PostCompact: [
+      {
+        hooks: [{ type: "command", command: "cam-hook post-compact" }],
       },
     ],
   };
@@ -69,17 +75,15 @@ export function mergeHooks(
     const existingEntries = existingHooks[hookType] ?? [];
 
     // Filter out any existing CAM hooks to avoid duplicates
-    const nonCamEntries = existingEntries.filter(
-      (entry) => !isCamHook(entry),
-    );
+    const nonCamEntries = existingEntries.filter((entry) => !isCamHook(entry));
 
     // Append CAM hooks at the end
     merged[hookType] = [...nonCamEntries, ...entries];
   }
 
-  // Preserve hook types not managed by CAM (and remove legacy PostCompact)
+  // Preserve hook types not managed by CAM
   for (const [hookType, entries] of Object.entries(existingHooks)) {
-    if (!(hookType in camHooks) && hookType !== 'PostCompact') {
+    if (!(hookType in camHooks)) {
       merged[hookType] = entries;
     }
   }
@@ -117,13 +121,13 @@ export function isCamHook(entry: HookEntry): boolean {
   // Check new format: hooks array with command containing marker
   if (entry.hooks && Array.isArray(entry.hooks)) {
     return entry.hooks.some(
-      (h) => h.type === 'command' && h.command.includes(CAM_HOOK_MARKER),
+      (h) => h.type === "command" && h.command.includes(CAM_HOOK_MARKER),
     );
   }
   // Legacy format fallback: direct command field
   const legacy = entry as unknown as Record<string, string>;
-  if (typeof legacy['command'] === 'string') {
-    return legacy['command'].includes(CAM_HOOK_MARKER);
+  if (typeof legacy["command"] === "string") {
+    return legacy["command"].includes(CAM_HOOK_MARKER);
   }
   return false;
 }
@@ -139,7 +143,7 @@ export function listConfiguredCamHooks(
       if (isCamHook(entry)) {
         // Extract command from hooks array
         const cmd = entry.hooks?.find(
-          (h) => h.type === 'command' && h.command.includes(CAM_HOOK_MARKER),
+          (h) => h.type === "command" && h.command.includes(CAM_HOOK_MARKER),
         );
         if (cmd) {
           result.push({ hookType, command: cmd.command });
@@ -152,10 +156,11 @@ export function listConfiguredCamHooks(
 }
 
 export const HOOK_TYPE_DESCRIPTIONS: Record<string, string> = {
-  PreToolUse: 'Before each tool call (all tools)',
-  PostToolUse: 'After each tool call (all tools)',
-  Notification: 'When Claude Code sends a notification',
-  Stop: 'When the main agent stops',
-  SubagentStop: 'When a sub-agent (teammate) stops',
-  PreCompact: 'Before context compaction',
+  PreToolUse: "Before each tool call (all tools)",
+  PostToolUse: "After each tool call (all tools)",
+  Notification: "When Claude Code sends a notification",
+  Stop: "When the main agent stops",
+  SubagentStop: "When a sub-agent (teammate) stops",
+  PreCompact: "Before context compaction",
+  PostCompact: "After context compaction",
 };

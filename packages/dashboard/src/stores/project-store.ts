@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Project, Sprint, PRDTask } from '@cam/shared';
 
-export type ViewMode = 'monitor' | 'tracker' | 'mission-control';
+export type ViewMode = 'map' | 'monitor' | 'tracker' | 'mission-control';
 
 interface ProjectState {
   projects: Project[];
@@ -10,6 +10,7 @@ interface ProjectState {
   sprints: Sprint[];
   tasks: PRDTask[];
   viewMode: ViewMode;
+  selectedTaskId: string | null;
 
   setProjects: (projects: Project[]) => void;
   setActiveProject: (project: Project | null) => void;
@@ -17,7 +18,10 @@ interface ProjectState {
   setSprints: (sprints: Sprint[]) => void;
   setTasks: (tasks: PRDTask[]) => void;
   updateTask: (taskId: string, updates: Partial<PRDTask>) => void;
+  updateActiveProject: (updates: Partial<Project>) => void;
+  updateActiveSprint: (updates: Partial<Sprint>) => void;
   setViewMode: (mode: ViewMode) => void;
+  selectTask: (taskId: string | null) => void;
 }
 
 export const useProjectStore = create<ProjectState>((set) => ({
@@ -26,7 +30,8 @@ export const useProjectStore = create<ProjectState>((set) => ({
   activeSprint: null,
   sprints: [],
   tasks: [],
-  viewMode: 'monitor',
+  viewMode: 'map',
+  selectedTaskId: null,
 
   setProjects: (projects) => set({ projects }),
   setActiveProject: (activeProject) => set({ activeProject }),
@@ -39,5 +44,18 @@ export const useProjectStore = create<ProjectState>((set) => ({
         t.id === taskId ? { ...t, ...updates } : t
       ),
     })),
+  updateActiveProject: (updates) =>
+    set((state) => ({
+      activeProject: state.activeProject
+        ? { ...state.activeProject, ...updates }
+        : null,
+    })),
+  updateActiveSprint: (updates) =>
+    set((state) => ({
+      activeSprint: state.activeSprint
+        ? { ...state.activeSprint, ...updates }
+        : null,
+    })),
   setViewMode: (viewMode) => set({ viewMode }),
+  selectTask: (selectedTaskId) => set({ selectedTaskId }),
 }));

@@ -133,3 +133,52 @@ export async function parsePrd(data: { content: string; method?: string }) {
     body: JSON.stringify(data),
   });
 }
+
+// === Session Groups (Multi-Agent Teams) ===
+
+export interface SessionGroupMember {
+  groupId: string;
+  sessionId: string;
+  agentName?: string;
+  agentType?: string;
+  joinedAt: string;
+  sessionStatus: string;
+  startedAt: string;
+  endedAt?: string;
+  agentCount: number;
+  eventCount: number;
+  workingDirectory: string;
+}
+
+export interface SessionGroup {
+  id: string;
+  name?: string;
+  mainSessionId: string;
+  createdAt: string;
+  memberCount: number;
+  members: SessionGroupMember[];
+}
+
+export async function fetchActiveSessionGroup(): Promise<SessionGroup | null> {
+  try {
+    const res = await fetch(`${BASE_URL}/session-groups/active`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return (data.group as SessionGroup) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchSessionGroupAgents(groupId: string) {
+  return request<{ agents: any[] }>(`/session-groups/${groupId}/agents`);
+}
+
+export async function fetchSessionGroupEvents(groupId: string, params?: { category?: string; limit?: number; offset?: number }) {
+  const query = new URLSearchParams();
+  if (params?.category) query.set('category', params.category);
+  if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.offset) query.set('offset', String(params.offset));
+  const qs = query.toString();
+  return request<{ events: any[]; sessionIds: string[] }>(`/session-groups/${groupId}/events${qs ? `?${qs}` : ''}`);
+}

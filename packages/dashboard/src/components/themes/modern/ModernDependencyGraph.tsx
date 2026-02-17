@@ -87,7 +87,7 @@ function computeDepths(
 // --- Component ---
 
 export function ModernDependencyGraph() {
-  const { tasks } = useProjectStore();
+  const { tasks, selectTask } = useProjectStore();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [hovered, setHovered] = useState<string | null>(null);
 
@@ -344,7 +344,8 @@ export function ModernDependencyGraph() {
                 key={node.id}
                 onMouseEnter={() => setHovered(node.id)}
                 onMouseLeave={() => setHovered(null)}
-                style={{ cursor: 'default' }}
+                onClick={() => selectTask(node.id)}
+                style={{ cursor: 'pointer' }}
                 opacity={dimmed ? 0.35 : 1}
                 className="transition-opacity duration-150"
               >

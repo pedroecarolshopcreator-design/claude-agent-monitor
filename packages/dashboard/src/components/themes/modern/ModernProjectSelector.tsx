@@ -3,6 +3,7 @@ import { useProjectStore, type ViewMode } from '../../../stores/project-store';
 import { formatPercent } from '../../../lib/formatters';
 
 const VIEW_MODES: { id: ViewMode; label: string; description: string }[] = [
+  { id: 'map', label: 'Agent Map', description: 'Pixel art agent visualization' },
   { id: 'monitor', label: 'Monitor', description: 'Real-time agent activity' },
   { id: 'tracker', label: 'Tracker', description: 'PRD & sprint tracking' },
   { id: 'mission-control', label: 'Mission Control', description: 'Combined view' },

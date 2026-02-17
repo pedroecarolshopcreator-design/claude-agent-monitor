@@ -3,6 +3,7 @@ export type SSEEventHandler = (data: any) => void;
 export interface SSEClientOptions {
   url: string;
   sessionId?: string;
+  groupId?: string;
   onEvent?: SSEEventHandler;
   onAgentStatus?: SSEEventHandler;
   onSessionStatus?: SSEEventHandler;
@@ -10,6 +11,14 @@ export interface SSEClientOptions {
   onTaskAssigned?: SSEEventHandler;
   onSprintProgress?: SSEEventHandler;
   onProjectProgress?: SSEEventHandler;
+  onTaskBlocked?: SSEEventHandler;
+  onTaskUnblocked?: SSEEventHandler;
+  onCorrelationMatch?: SSEEventHandler;
+  onAgentCreated?: SSEEventHandler;
+  onTeamCreated?: SSEEventHandler;
+  onSessionGroupCreated?: SSEEventHandler;
+  onSessionGroupMemberAdded?: SSEEventHandler;
+  onSessionGroupCompleted?: SSEEventHandler;
   onHeartbeat?: SSEEventHandler;
   onConnect?: () => void;
   onDisconnect?: () => void;
@@ -31,7 +40,10 @@ export class SSEClient {
     if (this.source) this.disconnect();
 
     const url = new URL(this.options.url, window.location.origin);
-    if (this.options.sessionId) {
+    // Prefer group_id over session_id when available (multi-agent teams)
+    if (this.options.groupId) {
+      url.searchParams.set('group_id', this.options.groupId);
+    } else if (this.options.sessionId) {
       url.searchParams.set('session_id', this.options.sessionId);
     }
 
@@ -56,6 +68,14 @@ export class SSEClient {
     this.addListener('task_assigned', this.options.onTaskAssigned);
     this.addListener('sprint_progress', this.options.onSprintProgress);
     this.addListener('project_progress', this.options.onProjectProgress);
+    this.addListener('task_blocked', this.options.onTaskBlocked);
+    this.addListener('task_unblocked', this.options.onTaskUnblocked);
+    this.addListener('correlation_match', this.options.onCorrelationMatch);
+    this.addListener('agent_created', this.options.onAgentCreated);
+    this.addListener('team_created', this.options.onTeamCreated);
+    this.addListener('session_group_created', this.options.onSessionGroupCreated);
+    this.addListener('session_group_member_added', this.options.onSessionGroupMemberAdded);
+    this.addListener('session_group_completed', this.options.onSessionGroupCompleted);
     this.addListener('heartbeat', this.options.onHeartbeat);
   }
 

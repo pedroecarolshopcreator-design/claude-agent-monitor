@@ -334,6 +334,27 @@ function handleTaskCreate(event: AgentEvent, input: Record<string, unknown>): vo
   const subject = (input['subject'] as string) || '';
   if (!subject) return;
 
+  // Try to extract the Claude Code taskId from the tool output
+  // PostToolUse events include the output which may contain the created task ID
+  let externalId: string | null = null;
+  if (event.output) {
+    try {
+      const output = typeof event.output === 'string' ? JSON.parse(event.output) : event.output;
+      externalId = (output as Record<string, unknown>)['taskId'] as string
+        ?? (output as Record<string, unknown>)['id'] as string
+        ?? null;
+    } catch {
+      // output is not JSON - try regex for task ID pattern
+      const match = (event.output as string).match(/(?:task|id)[:\s]*["']?([a-f0-9-]{8,})["']?/i);
+      if (match) externalId = match[1] ?? null;
+    }
+  }
+
+  // Also check input for taskId (some hooks include it)
+  if (!externalId) {
+    externalId = (input['taskId'] as string) ?? (input['id'] as string) ?? null;
+  }
+
   const projects = projectQueries.getAll().all() as Array<{ id: string }>;
 
   for (const project of projects) {
@@ -351,9 +372,9 @@ function handleTaskCreate(event: AgentEvent, input: Record<string, unknown>): vo
     }
 
     if (bestMatch) {
-      // Link via external ID
+      // Link via external ID - use Claude Code's taskId, not event.id
       prdTaskQueries.update().run(
-        null, null, null, null, event.id,
+        null, null, null, null, externalId,
         null, null, event.sessionId,
         new Date().toISOString(),
         bestMatch.id
@@ -368,7 +389,7 @@ function handleTaskCreate(event: AgentEvent, input: Record<string, unknown>): vo
         event.agentId,
         'task_created',
         event.timestamp,
-        `Matched with TaskCreate: "${subject}" (confidence: ${(bestScore * 100).toFixed(0)}%)`
+        `Matched with TaskCreate: "${subject}" (confidence: ${(bestScore * 100).toFixed(0)}%, externalId: ${externalId ?? 'none'})`
       );
 
       sseManager.broadcast('correlation_match', {
@@ -387,6 +408,7 @@ function handleTaskUpdate(event: AgentEvent, input: Record<string, unknown>): vo
   const taskId = input['taskId'] as string;
   const status = input['status'] as string;
   const owner = input['owner'] as string;
+  const subject = input['subject'] as string;
 
   if (!taskId) return;
 
@@ -395,7 +417,68 @@ function handleTaskUpdate(event: AgentEvent, input: Record<string, unknown>): vo
   for (const project of projects) {
     const tasks = prdTaskQueries.getByProject().all(project.id) as PrdTaskRow[];
 
-    const matchedTask = tasks.find(t => t.external_id === taskId);
+    // Strategy 1: exact match by external_id
+    let matchedTask = tasks.find(t => t.external_id === taskId);
+    let matchMethod = 'externalId exact match';
+    let confidence = 1.0;
+
+    // Strategy 2: fuzzy match by subject/title (fallback)
+    if (!matchedTask && subject) {
+      let bestScore = 0;
+      for (const task of tasks) {
+        if (task.status === 'completed' || task.status === 'deferred') continue;
+        const score = fuzzyMatch(subject, task.title);
+        if (score > bestScore && score >= CONFIDENCE_THRESHOLD) {
+          matchedTask = task;
+          bestScore = score;
+        }
+      }
+      if (matchedTask) {
+        confidence = bestScore;
+        matchMethod = `subject fuzzy match: "${subject}" (${(bestScore * 100).toFixed(0)}%)`;
+
+        // Link for future exact matches
+        prdTaskQueries.update().run(
+          null, null, null, null, taskId,
+          null, null, event.sessionId,
+          new Date().toISOString(),
+          matchedTask.id
+        );
+      }
+    }
+
+    // Strategy 3: if we have an activeForm/description, try fuzzy on that
+    if (!matchedTask) {
+      const activeForm = input['activeForm'] as string;
+      const description = input['description'] as string;
+      const searchText = activeForm || description || '';
+      if (searchText) {
+        let bestScore = 0;
+        for (const task of tasks) {
+          if (task.status === 'completed' || task.status === 'deferred') continue;
+          const titleScore = fuzzyMatch(searchText, task.title);
+          const descScore = fuzzyMatch(searchText, task.description) * 0.8;
+          const score = Math.max(titleScore, descScore);
+          if (score > bestScore && score >= CONFIDENCE_THRESHOLD) {
+            matchedTask = task;
+            bestScore = score;
+          }
+        }
+        if (matchedTask) {
+          confidence = bestScore;
+          matchMethod = `description fuzzy match (${(bestScore * 100).toFixed(0)}%)`;
+
+          // Link for future exact matches
+          prdTaskQueries.update().run(
+            null, null, null, null, taskId,
+            null, null, event.sessionId,
+            new Date().toISOString(),
+            matchedTask.id
+          );
+        }
+      }
+    }
+
     if (!matchedTask) continue;
 
     const updates: Record<string, string | undefined> = {};
@@ -404,6 +487,8 @@ function handleTaskUpdate(event: AgentEvent, input: Record<string, unknown>): vo
       updates['status'] = 'in_progress';
     } else if (status === 'completed') {
       updates['status'] = 'completed';
+    } else if (status === 'pending') {
+      updates['status'] = 'pending';
     }
 
     if (owner) {
@@ -428,14 +513,14 @@ function handleTaskUpdate(event: AgentEvent, input: Record<string, unknown>): vo
       event.agentId,
       activityType,
       event.timestamp,
-      `TaskUpdate: status=${status || 'unchanged'}, owner=${owner || 'unchanged'}`
+      `TaskUpdate: status=${status || 'unchanged'}, owner=${owner || 'unchanged'} (${matchMethod})`
     );
 
     sseManager.broadcast('correlation_match', {
       eventId: event.id,
       taskId: matchedTask.id,
-      confidence: 1.0,
-      reason: `TaskUpdate externalId exact match`,
+      confidence,
+      reason: `TaskUpdate ${matchMethod}`,
     });
 
     break;

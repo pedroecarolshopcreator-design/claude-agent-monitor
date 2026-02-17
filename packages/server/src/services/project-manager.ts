@@ -405,7 +405,71 @@ export function updateTask(taskId: string, updates: {
     });
   }
 
+  // Check dependency chain when a task is completed
+  if (newStatus === 'completed' && oldStatus !== 'completed') {
+    checkDependencies(updated.projectId, taskId);
+  }
+
   return updated;
+}
+
+// === Dependency Resolution ===
+
+/**
+ * When a task is completed, check if any tasks in the same project
+ * that depend on it can be unblocked.
+ */
+function checkDependencies(projectId: string, completedTaskId: string): void {
+  const allTasks = prdTaskQueries.getByProject().all(projectId) as PrdTaskRow[];
+
+  for (const task of allTasks) {
+    const dependsOn: string[] = JSON.parse(task.depends_on || '[]');
+    if (dependsOn.length === 0) continue;
+
+    // Only care about tasks that depend on the just-completed task
+    if (!dependsOn.includes(completedTaskId)) continue;
+
+    // Check if ALL dependencies are now completed
+    const allDepsCompleted = dependsOn.every((depId) => {
+      const depTask = allTasks.find((t) => t.id === depId);
+      return depTask?.status === 'completed';
+    });
+
+    if (allDepsCompleted && task.status === 'blocked') {
+      // Unblock: move to pending
+      const now = new Date().toISOString();
+      prdTaskQueries.update().run(
+        'pending', null, null, null, null,
+        null, null, null,
+        now,
+        task.id
+      );
+
+      sseManager.broadcast('task_unblocked', {
+        taskId: task.id,
+        unblockedBy: completedTaskId,
+      });
+
+      sseManager.broadcast('task_status_changed', {
+        taskId: task.id,
+        oldStatus: 'blocked',
+        newStatus: 'pending',
+        agent: task.assigned_agent,
+      });
+    } else if (!allDepsCompleted && task.status !== 'blocked' && task.status !== 'completed' && task.status !== 'deferred') {
+      // Block: task has unresolved deps and isn't already in a terminal state
+      const unresolved = dependsOn.filter((depId) => {
+        const depTask = allTasks.find((t) => t.id === depId);
+        return depTask?.status !== 'completed';
+      });
+
+      sseManager.broadcast('task_blocked', {
+        taskId: task.id,
+        blockedBy: unresolved,
+        reason: 'dependency',
+      });
+    }
+  }
 }
 
 export function getTaskStatusSummary(projectId: string) {

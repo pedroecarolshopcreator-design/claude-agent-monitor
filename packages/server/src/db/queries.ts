@@ -1,6 +1,6 @@
-import type Database from 'better-sqlite3';
-import type BetterSqlite3 from 'better-sqlite3';
-import { getDb } from './index.js';
+import type Database from "better-sqlite3";
+import type BetterSqlite3 from "better-sqlite3";
+import { getDb } from "./index.js";
 
 function db(): Database.Database {
   return getDb();
@@ -40,15 +40,31 @@ export const sessionQueries: Record<string, () => Statement> = {
   },
 
   updateStatus() {
-    return db().prepare(`UPDATE sessions SET status = ?, ended_at = ? WHERE id = ?`);
+    return db().prepare(
+      `UPDATE sessions SET status = ?, ended_at = ? WHERE id = ?`,
+    );
   },
 
   incrementEventCount() {
-    return db().prepare(`UPDATE sessions SET event_count = event_count + 1 WHERE id = ?`);
+    return db().prepare(
+      `UPDATE sessions SET event_count = event_count + 1 WHERE id = ?`,
+    );
   },
 
   updateAgentCount() {
     return db().prepare(`UPDATE sessions SET agent_count = ? WHERE id = ?`);
+  },
+
+  getActiveStaleSessions() {
+    return db().prepare(`
+      SELECT s.id FROM sessions s
+      WHERE s.status = 'active'
+        AND NOT EXISTS (
+          SELECT 1 FROM events e
+          WHERE e.session_id = s.id AND e.timestamp > ?
+        )
+        AND s.started_at < ?
+    `);
   },
 
   deleteById() {
@@ -70,7 +86,9 @@ export const agentQueries: Record<string, () => Statement> = {
   },
 
   getBySession() {
-    return db().prepare(`SELECT * FROM agents WHERE session_id = ? ORDER BY first_seen_at ASC`);
+    return db().prepare(
+      `SELECT * FROM agents WHERE session_id = ? ORDER BY first_seen_at ASC`,
+    );
   },
 
   getById() {
@@ -78,7 +96,9 @@ export const agentQueries: Record<string, () => Statement> = {
   },
 
   updateStatus() {
-    return db().prepare(`UPDATE agents SET status = ?, last_activity_at = ? WHERE id = ? AND session_id = ?`);
+    return db().prepare(
+      `UPDATE agents SET status = ?, last_activity_at = ? WHERE id = ? AND session_id = ?`,
+    );
   },
 
   incrementToolCalls() {
@@ -95,8 +115,26 @@ export const agentQueries: Record<string, () => Statement> = {
     `);
   },
 
+  updateAgentName() {
+    return db().prepare(
+      `UPDATE agents SET name = ? WHERE id = ? AND session_id = ?`,
+    );
+  },
+
   updateCurrentTask() {
-    return db().prepare(`UPDATE agents SET current_task = ? WHERE id = ? AND session_id = ?`);
+    return db().prepare(
+      `UPDATE agents SET current_task = ? WHERE id = ? AND session_id = ?`,
+    );
+  },
+
+  getActiveStale() {
+    return db().prepare(`
+      SELECT a.*, s.id as sess_id FROM agents a
+      JOIN sessions s ON a.session_id = s.id
+      WHERE a.status = 'active'
+        AND s.status = 'active'
+        AND a.last_activity_at < ?
+    `);
   },
 };
 
@@ -165,7 +203,9 @@ export const eventQueries: Record<string, () => Statement> = {
   },
 
   countBySession() {
-    return db().prepare(`SELECT COUNT(*) as count FROM events WHERE session_id = ?`);
+    return db().prepare(
+      `SELECT COUNT(*) as count FROM events WHERE session_id = ?`,
+    );
   },
 
   getToolBreakdown() {
@@ -239,7 +279,102 @@ export const taskItemQueries: Record<string, () => Statement> = {
   },
 
   getBySession() {
-    return db().prepare(`SELECT * FROM task_items WHERE session_id = ? ORDER BY created_at ASC`);
+    return db().prepare(
+      `SELECT * FROM task_items WHERE session_id = ? ORDER BY created_at ASC`,
+    );
+  },
+};
+
+// === Session Groups ===
+
+export const sessionGroupQueries: Record<string, () => Statement> = {
+  create() {
+    return db().prepare(`
+      INSERT INTO session_groups (id, name, main_session_id, created_at)
+      VALUES (?, ?, ?, ?)
+    `);
+  },
+
+  getById() {
+    return db().prepare(`SELECT * FROM session_groups WHERE id = ?`);
+  },
+
+  getAll() {
+    return db().prepare(
+      `SELECT * FROM session_groups ORDER BY created_at DESC`,
+    );
+  },
+
+  getBySessionId() {
+    return db().prepare(`
+      SELECT sg.* FROM session_groups sg
+      JOIN session_group_members sgm ON sg.id = sgm.group_id
+      WHERE sgm.session_id = ?
+    `);
+  },
+
+  getActiveGroup() {
+    return db().prepare(`
+      SELECT sg.* FROM session_groups sg
+      WHERE EXISTS (
+        SELECT 1 FROM session_group_members sgm
+        JOIN sessions s ON sgm.session_id = s.id
+        WHERE sgm.group_id = sg.id AND s.status = 'active'
+      )
+      ORDER BY sg.created_at DESC
+      LIMIT 1
+    `);
+  },
+
+  updateName() {
+    return db().prepare(`UPDATE session_groups SET name = ? WHERE id = ?`);
+  },
+
+  getLatestMemberJoinedAt() {
+    return db().prepare(`
+      SELECT MAX(sgm.joined_at) as latest_joined_at
+      FROM session_group_members sgm
+      WHERE sgm.group_id = ?
+    `);
+  },
+
+  deleteById() {
+    return db().prepare(`DELETE FROM session_groups WHERE id = ?`);
+  },
+};
+
+export const sessionGroupMemberQueries: Record<string, () => Statement> = {
+  add() {
+    return db().prepare(`
+      INSERT INTO session_group_members (group_id, session_id, agent_name, agent_type, joined_at)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(group_id, session_id) DO UPDATE SET
+        agent_name = COALESCE(excluded.agent_name, session_group_members.agent_name),
+        agent_type = COALESCE(excluded.agent_type, session_group_members.agent_type)
+    `);
+  },
+
+  getByGroup() {
+    return db().prepare(`
+      SELECT sgm.*, s.status as session_status, s.started_at, s.ended_at,
+             s.agent_count, s.event_count, s.working_directory
+      FROM session_group_members sgm
+      JOIN sessions s ON sgm.session_id = s.id
+      WHERE sgm.group_id = ?
+      ORDER BY sgm.joined_at ASC
+    `);
+  },
+
+  getBySessionId() {
+    return db().prepare(`
+      SELECT * FROM session_group_members WHERE session_id = ?
+    `);
+  },
+
+  getAllSessionIdsInGroup() {
+    return db().prepare(`
+      SELECT session_id FROM session_group_members WHERE group_id = ?
+    `);
   },
 };
 
@@ -301,7 +436,9 @@ export const sprintQueries: Record<string, () => Statement> = {
   },
 
   getByProject() {
-    return db().prepare(`SELECT * FROM sprints WHERE project_id = ? ORDER BY "order" ASC`);
+    return db().prepare(
+      `SELECT * FROM sprints WHERE project_id = ? ORDER BY "order" ASC`,
+    );
   },
 
   getById() {
@@ -332,7 +469,9 @@ export const sprintQueries: Record<string, () => Statement> = {
   },
 
   getNextOrder() {
-    return db().prepare(`SELECT COALESCE(MAX("order"), 0) + 1 as next_order FROM sprints WHERE project_id = ?`);
+    return db().prepare(
+      `SELECT COALESCE(MAX("order"), 0) + 1 as next_order FROM sprints WHERE project_id = ?`,
+    );
   },
 
   deleteById() {
@@ -351,23 +490,33 @@ export const prdTaskQueries: Record<string, () => Statement> = {
   },
 
   getByProject() {
-    return db().prepare(`SELECT * FROM prd_tasks WHERE project_id = ? ORDER BY created_at ASC`);
+    return db().prepare(
+      `SELECT * FROM prd_tasks WHERE project_id = ? ORDER BY created_at ASC`,
+    );
   },
 
   getBySprint() {
-    return db().prepare(`SELECT * FROM prd_tasks WHERE sprint_id = ? ORDER BY created_at ASC`);
+    return db().prepare(
+      `SELECT * FROM prd_tasks WHERE sprint_id = ? ORDER BY created_at ASC`,
+    );
   },
 
   getByProjectAndStatus() {
-    return db().prepare(`SELECT * FROM prd_tasks WHERE project_id = ? AND status = ? ORDER BY created_at ASC`);
+    return db().prepare(
+      `SELECT * FROM prd_tasks WHERE project_id = ? AND status = ? ORDER BY created_at ASC`,
+    );
   },
 
   getByProjectAndAgent() {
-    return db().prepare(`SELECT * FROM prd_tasks WHERE project_id = ? AND assigned_agent = ? ORDER BY created_at ASC`);
+    return db().prepare(
+      `SELECT * FROM prd_tasks WHERE project_id = ? AND assigned_agent = ? ORDER BY created_at ASC`,
+    );
   },
 
   getByProjectAndPriority() {
-    return db().prepare(`SELECT * FROM prd_tasks WHERE project_id = ? AND priority = ? ORDER BY created_at ASC`);
+    return db().prepare(
+      `SELECT * FROM prd_tasks WHERE project_id = ? AND priority = ? ORDER BY created_at ASC`,
+    );
   },
 
   getById() {
@@ -400,7 +549,9 @@ export const prdTaskQueries: Record<string, () => Statement> = {
   },
 
   findByTitle() {
-    return db().prepare(`SELECT * FROM prd_tasks WHERE project_id = ? AND title LIKE ?`);
+    return db().prepare(
+      `SELECT * FROM prd_tasks WHERE project_id = ? AND title LIKE ?`,
+    );
   },
 
   deleteById() {

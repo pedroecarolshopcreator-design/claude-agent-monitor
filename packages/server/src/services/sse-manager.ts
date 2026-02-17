@@ -5,13 +5,29 @@ interface SSEClient {
   id: string;
   res: Response;
   sessionFilter?: string;
+  groupFilter?: string;
 }
+
+/**
+ * Resolver function to get all session IDs belonging to a group.
+ * Set by the server during initialization to avoid circular imports.
+ */
+type GroupSessionResolver = (groupId: string) => string[];
 
 class SSEManager {
   private clients: Map<string, SSEClient> = new Map();
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  private groupSessionResolver: GroupSessionResolver | null = null;
 
-  addClient(id: string, res: Response, sessionFilter?: string): void {
+  /**
+   * Set the resolver that maps group IDs to session IDs.
+   * This avoids circular imports between sse-manager and queries.
+   */
+  setGroupSessionResolver(resolver: GroupSessionResolver): void {
+    this.groupSessionResolver = resolver;
+  }
+
+  addClient(id: string, res: Response, sessionFilter?: string, groupFilter?: string): void {
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -21,7 +37,7 @@ class SSEManager {
 
     res.write(`event: connected\ndata: ${JSON.stringify({ clientId: id, timestamp: new Date().toISOString() })}\n\n`);
 
-    this.clients.set(id, { id, res, sessionFilter });
+    this.clients.set(id, { id, res, sessionFilter, groupFilter });
 
     res.on('close', () => {
       this.clients.delete(id);
@@ -36,19 +52,54 @@ class SSEManager {
     const payload = `event: ${eventType}\ndata: ${JSON.stringify(data)}\n\n`;
 
     for (const client of this.clients.values()) {
-      if (client.sessionFilter && sessionId && client.sessionFilter !== sessionId) {
-        continue;
-      }
-      try {
-        client.res.write(payload);
-      } catch {
-        this.clients.delete(client.id);
+      if (this.shouldDeliverToClient(client, sessionId)) {
+        try {
+          client.res.write(payload);
+        } catch {
+          this.clients.delete(client.id);
+        }
       }
     }
   }
 
   getConnectionCount(): number {
     return this.clients.size;
+  }
+
+  /**
+   * Determine if a message should be delivered to a specific client.
+   * Supports both session-level and group-level filtering.
+   */
+  private shouldDeliverToClient(client: SSEClient, sessionId?: string): boolean {
+    // No filter on client = receives everything
+    if (!client.sessionFilter && !client.groupFilter) {
+      return true;
+    }
+
+    // Session filter: direct match
+    if (client.sessionFilter && sessionId && client.sessionFilter === sessionId) {
+      return true;
+    }
+
+    // Group filter: check if sessionId belongs to the group
+    if (client.groupFilter && sessionId && this.groupSessionResolver) {
+      try {
+        const groupSessionIds = this.groupSessionResolver(client.groupFilter);
+        if (groupSessionIds.includes(sessionId)) {
+          return true;
+        }
+      } catch {
+        // If resolver fails, skip
+      }
+    }
+
+    // If client has a filter but sessionId doesn't match, skip
+    // (unless no sessionId was provided, in which case deliver to all)
+    if (!sessionId) {
+      return true;
+    }
+
+    return false;
   }
 
   private startHeartbeat(): void {

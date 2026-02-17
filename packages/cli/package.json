@@ -7,7 +7,8 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "cam": "./dist/index.js"
+    "cam": "./dist/index.js",
+    "cam-hook": "./dist/cam-hook.js"
   },
   "exports": {
     ".": {
@@ -15,7 +16,9 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
@@ -42,7 +45,13 @@
   },
   "homepage": "https://github.com/user/claude-agent-monitor",
   "bugs": "https://github.com/user/claude-agent-monitor/issues",
-  "keywords": ["claude", "agent", "monitor", "observability", "claude-code"],
+  "keywords": [
+    "claude",
+    "agent",
+    "monitor",
+    "observability",
+    "claude-code"
+  ],
   "author": "CAM Contributors",
   "publishConfig": {
     "access": "public"

@@ -24,7 +24,9 @@ export type HookType =
   | 'PostCompact'
   | 'PreToolUseRejected'
   | 'ToolError'
-  | 'SessionStart';
+  | 'SessionStart'
+  | 'SessionEnd'
+  | 'UserPromptSubmit';
 
 export type EventCategory =
   | 'tool_call'

@@ -75,6 +75,29 @@ CREATE TABLE IF NOT EXISTS task_items (
   FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
 );
 
+-- === Session Groups (Multi-Agent Teams) ===
+
+CREATE TABLE IF NOT EXISTS session_groups (
+  id TEXT PRIMARY KEY,
+  name TEXT,
+  main_session_id TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (main_session_id) REFERENCES sessions(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS session_group_members (
+  group_id TEXT NOT NULL,
+  session_id TEXT NOT NULL,
+  agent_name TEXT,
+  agent_type TEXT,
+  joined_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (group_id, session_id),
+  FOREIGN KEY (group_id) REFERENCES session_groups(id) ON DELETE CASCADE,
+  FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_session_group_members_session ON session_group_members(session_id);
+
 -- === Pilar 2: PRD Tracker ===
 
 CREATE TABLE IF NOT EXISTS projects (

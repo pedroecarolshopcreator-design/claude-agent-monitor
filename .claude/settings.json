@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh .claude/hooks/block-secrets.sh"
+            "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-secrets.sh\""
           }
         ]
       },
@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh .claude/hooks/block-dangerous-commands.sh"
+            "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/block-dangerous-commands.sh\""
           }
         ]
       },
@@ -24,7 +24,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node packages/hook/dist/index.js pre-tool-use"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/cam-hook.sh\" pre-tool-use"
           }
         ]
       }
@@ -35,7 +35,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh .claude/hooks/auto-format.sh"
+            "command": "sh \"$CLAUDE_PROJECT_DIR/.claude/hooks/auto-format.sh\""
           }
         ]
       },
@@ -44,7 +44,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node packages/hook/dist/index.js post-tool-use"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/cam-hook.sh\" post-tool-use"
           }
         ]
       }
@@ -55,7 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node packages/hook/dist/index.js notification"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/cam-hook.sh\" notification"
           }
         ]
       }
@@ -65,7 +65,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node packages/hook/dist/index.js stop"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/cam-hook.sh\" stop"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/cam-hook.sh\" subagent-start"
           }
         ]
       }
@@ -75,7 +85,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node packages/hook/dist/index.js subagent-stop"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/cam-hook.sh\" subagent-stop"
           }
         ]
       }
@@ -85,7 +95,37 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node packages/hook/dist/index.js pre-compact"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/cam-hook.sh\" pre-compact"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/cam-hook.sh\" session-start"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/cam-hook.sh\" session-end"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/cam-hook.sh\" user-prompt-submit"
           }
         ]
       }

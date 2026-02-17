@@ -2,10 +2,14 @@
 
 > Mission Control open-source para agentes Claude Code: observabilidade em tempo real + tracking visual de PRD/Sprints
 
-**Versao**: 2.0.0
-**Data**: 2026-02-14
-**Status**: Draft
+**Versao**: 3.0.0
+**Data**: 2026-02-16
+**Status**: Active (MVP released, Backlog in progress)
 **Licenca**: MIT
+
+---
+
+# PARTE 1 - PRD (O QUE construir)
 
 ---
 
@@ -81,6 +85,10 @@ Alem disso, quando agentes usam `TaskCreate`, `TaskUpdate`, e `TaskList`, essas 
 
 ---
 
+# PARTE 2 - SPEC (COMO construir)
+
+---
+
 ## 3. Arquitetura Tecnica
 
 ### Overview
@@ -126,13 +134,13 @@ Claude Code (hooks) --+--> Local Server (Node.js) ---> Dashboard (Browser)
 | Camada | Tecnologia | Justificativa |
 |--------|-----------|---------------|
 | **Hook Scripts** | Bash/PowerShell + curl | Universais, zero deps |
-| **Server** | Node.js + Express/Fastify | Leve, facil de instalar |
+| **Server** | Node.js + Express | Leve, facil de instalar |
 | **Database** | SQLite (better-sqlite3) | Zero config, arquivo local |
 | **SSE** | EventSource API nativa | Simples, unidirecional, perfeito para monitoring |
 | **Dashboard** | React 19 + Vite | Rapido, moderno, HMR para dev |
 | **Styling** | Tailwind CSS 4 | Consistente, facil theming |
 | **State** | Zustand | Leve, sem boilerplate |
-| **Graficos** | Recharts ou Visx | Simples, React-native |
+| **Graficos** | Recharts | Simples, React-native |
 
 ### Por que NAO WebSocket?
 SSE (Server-Sent Events) e suficiente porque:
@@ -144,102 +152,9 @@ SSE (Server-Sent Events) e suficiente porque:
 
 ---
 
-## 4. Especificacao dos 3 Temas
+## 4. Data Model
 
-### 4.1 Pixel Art Theme ("Retro")
-
-**Conceito**: Dashboard estilo game boy / RPG dos anos 90. Cada agente e um personagem pixel art com animacoes de estado.
-
-**Visual**:
-- Background: Grid escuro com scan lines sutis
-- Fonte: Monospace pixelada (Press Start 2P ou similar)
-- Cores: Paleta limitada a 16 cores (estilo NES)
-- Bordas: Pixel borders (box-shadow steps)
-- Agentes: Sprites 32x32 com idle/working/error/done animations
-- Barra de progresso: Coracao/estrela que enche pixel a pixel
-- Notificacoes: Baloes de dialogo RPG
-
-**Agente Sprites (estados)**:
-| Estado | Animacao |
-|--------|----------|
-| `idle` | Personagem parado, piscando |
-| `working` | Martelando/digitando, particulas de codigo |
-| `error` | Exclamacao vermelha piscando, personagem tremendo |
-| `completed` | Comemoracap com confete pixelado |
-| `shutdown` | Personagem deita e dorme (zzZ) |
-
-**Layout**:
-- Top: Status bar estilo game (HP/MP = progresso/memoria)
-- Center: "Mapa" onde agentes se movem entre "salas" (tasks)
-- Bottom: Log estilo terminal RPG ("Agent-1 used Edit! It's super effective!")
-- Sidebar: Inventario = lista de arquivos modificados
-
-### 4.2 Modern Theme ("Clean")
-
-**Conceito**: Dashboard minimalista e profissional, inspirado em Linear/Vercel/Raycast.
-
-**Visual**:
-- Background: `#0a0a0a` com gradients sutis
-- Fonte: Inter/Geist (system)
-- Cores: Neutrals + accent color configuravel
-- Bordas: 1px borders com border-radius suave
-- Cards: Glassmorphism sutil com backdrop-blur
-- Motion: Framer Motion para transicoes suaves
-- Graficos: Area charts limpos para timeline
-
-**Layout**:
-- Top bar: Session info + tempo decorrido + agent count
-- Left sidebar: Lista de agentes com status dots (verde/amarelo/vermelho)
-- Center: Feed de atividades em tempo real (estilo git log visual)
-- Right panel: Detalhes do agente selecionado (tool calls, files, messages)
-- Bottom: Mini timeline/gantt dos agentes
-
-**Componentes especificos**:
-- Agent cards com avatar gerado (identicon/gradient)
-- Activity feed com icones por tipo de tool
-- File tree com highlights de arquivos modificados
-- Diff viewer inline para mudancas recentes
-- Toast notifications para eventos importantes
-
-### 4.3 Terminal Theme ("Hacker")
-
-**Conceito**: Interface 100% texto, estilo htop/lazygit/terminal multiplexer. Para quem vive no terminal.
-
-**Visual**:
-- Background: Preto puro `#000000`
-- Fonte: JetBrains Mono / Fira Code
-- Cores: Verde fosforescente (#00ff00) principal, amber (#ffaa00) warnings, red (#ff0000) errors
-- Sem bordas arredondadas - tudo reto, box-drawing characters
-- Efeito CRT opcional (curvatura + scan lines + flicker)
-- ASCII art para headers e separadores
-
-**Layout (paineis estilo tmux)**:
-```
-+--[Agents]--+--[Activity Log]--+--[Details]--+
-| AG-1: work | 14:23 AG-1 Edit  | Tool: Edit   |
-| AG-2: idle | 14:23 AG-1 Read  | File: src/.. |
-| AG-3: done | 14:22 AG-2 Bash  | Duration: 3s |
-+------------+-----------+------+--------------+
-| [Task List]            | [File Watcher]       |
-| [ ] Task 1 (AG-1)     | M src/index.ts       |
-| [x] Task 2 (AG-3)     | A src/new-file.ts    |
-| [ ] Task 3 (blocked)  | M package.json       |
-+------------------------+----------------------+
-```
-
-**Caracteristicas**:
-- Keyboard-only navigation (vim keys: j/k/h/l)
-- Paineis redimensionaveis com drag
-- Filtros por tipo de evento (`:filter tool:Edit`)
-- Busca textual nos logs (`:search pattern`)
-- Auto-scroll com toggle (tecla `f` = follow mode)
-- Sparklines ASCII para metricas
-
----
-
-## 5. Data Model
-
-### 5.1 Session
+### 4.1 Session
 
 Uma sessao representa uma invocacao do Claude Code.
 
@@ -256,7 +171,7 @@ interface Session {
 }
 ```
 
-### 5.2 Agent
+### 4.2 Agent
 
 Um agente e um processo Claude Code (main ou teammate).
 
@@ -282,7 +197,7 @@ type AgentStatus =
   | 'shutdown';    // recebeu shutdown request
 ```
 
-### 5.3 Event
+### 4.3 Event
 
 Evento individual capturado por um hook.
 
@@ -330,7 +245,7 @@ type EventCategory =
   | 'notification'; // Notifications
 ```
 
-### 5.4 TaskItem
+### 4.4 TaskItem
 
 Espelho das tasks do team (capturadas indiretamente via tool calls).
 
@@ -346,7 +261,7 @@ interface TaskItem {
 }
 ```
 
-### 5.5 FileChange
+### 4.5 FileChange
 
 Arquivo modificado durante a sessao.
 
@@ -362,7 +277,7 @@ interface FileChange {
 }
 ```
 
-### 5.6 Project (Pilar 2)
+### 4.6 Project (Pilar 2)
 
 Container principal que agrupa PRD + sessoes + tasks.
 
@@ -383,7 +298,7 @@ interface Project {
 }
 ```
 
-### 5.7 Sprint (Pilar 2)
+### 4.7 Sprint (Pilar 2)
 
 Fase/sprint dentro de um projeto. Um projeto pode ter multiplos sprints.
 
@@ -403,9 +318,9 @@ interface Sprint {
 }
 ```
 
-### 5.8 PRDTask (Pilar 2)
+### 4.8 PRDTask (Pilar 2)
 
-Task extraida do PRD com status, assignee, e dependencias. Diferente de `TaskItem` (5.4) que e um espelho efemero das tasks do Claude Code, `PRDTask` e persistente e representa a visao do projeto.
+Task extraida do PRD com status, assignee, e dependencias. Diferente de `TaskItem` (4.4) que e um espelho efemero das tasks do Claude Code, `PRDTask` e persistente e representa a visao do projeto.
 
 ```typescript
 interface PRDTask {
@@ -455,7 +370,7 @@ type PRDTaskStatus =
   | 'deferred';      // adiada para sprint futuro
 ```
 
-### 5.9 TaskActivity (Pilar 2)
+### 4.9 TaskActivity (Pilar 2)
 
 Ponte entre eventos de agente (Pilar 1) e tasks do PRD (Pilar 2). E a "cola" que permite o dashboard saber que "o agente X editando arquivo Y" corresponde a "Task 5 do Sprint 2".
 
@@ -483,7 +398,7 @@ type TaskActivityType =
   | 'manual_update';   // usuario atualizou manualmente
 ```
 
-### 5.10 PRDDocument (Pilar 2)
+### 4.10 PRDDocument (Pilar 2)
 
 Representacao parseada do PRD para referencia e tracking.
 
@@ -509,7 +424,7 @@ interface PRDSection {
 }
 ```
 
-### 5.11 Correlation Engine
+### 4.11 Correlation Engine
 
 O Correlation Engine e o servico que conecta os dois pilares. Ele observa eventos do Pilar 1 e atualiza o estado do Pilar 2 automaticamente.
 
@@ -557,11 +472,11 @@ const CORRELATION_RULES = {
 
 ---
 
-## 6. Hook Events
+## 5. Hook Events
 
 Claude Code suporta hooks que executam shell commands em resposta a eventos. Referencia: https://docs.anthropic.com/en/docs/claude-code/hooks
 
-### 6.1 Hooks que Vamos Capturar
+### 5.1 Hooks que Vamos Capturar
 
 #### 1. PreToolUse
 **Quando**: Antes de cada chamada de tool
@@ -769,7 +684,7 @@ Claude Code suporta hooks que executam shell commands em resposta a eventos. Ref
 }
 ```
 
-### 6.2 Configuracao Completa dos Hooks
+### 5.2 Configuracao Completa dos Hooks
 
 Arquivo `.claude/settings.json` (gerado automaticamente por `cam init`):
 
@@ -830,11 +745,11 @@ Arquivo `.claude/settings.json` (gerado automaticamente por `cam init`):
 
 ---
 
-## 7. Server API
+## 6. Server API
 
 ### Base URL: `http://localhost:7890`
 
-### 7.1 Event Ingestion
+### 6.1 Event Ingestion
 
 #### `POST /api/events`
 Recebe eventos dos hooks. Endpoint principal de ingestao.
@@ -862,7 +777,7 @@ Recebe eventos dos hooks. Endpoint principal de ingestao.
 - Emite via SSE para todos os clients conectados
 - Latencia alvo: < 5ms (nao pode atrasar o Claude Code)
 
-### 7.2 Session Management
+### 6.2 Session Management
 
 #### `GET /api/sessions`
 Lista todas as sessoes.
@@ -892,7 +807,7 @@ Detalhes de uma sessao especifica.
 #### `DELETE /api/sessions/:id`
 Remove uma sessao e todos seus eventos.
 
-### 7.3 Agent Data
+### 6.3 Agent Data
 
 #### `GET /api/sessions/:id/agents`
 Lista agentes de uma sessao.
@@ -919,7 +834,7 @@ Eventos de um agente especifico.
 
 **Query params**: `?category=tool_call&limit=50&offset=0`
 
-### 7.4 Events
+### 6.4 Events
 
 #### `GET /api/sessions/:id/events`
 Lista eventos de uma sessao com filtros.
@@ -932,7 +847,7 @@ Lista eventos de uma sessao com filtros.
 - `limit`: max resultados (default 100)
 - `offset`: paginacao
 
-### 7.5 File Changes
+### 6.5 File Changes
 
 #### `GET /api/sessions/:id/files`
 Lista arquivos modificados na sessao.
@@ -952,7 +867,7 @@ Lista arquivos modificados na sessao.
 }
 ```
 
-### 7.6 Real-time Stream (SSE)
+### 6.6 Real-time Stream (SSE)
 
 #### `GET /api/stream`
 Server-Sent Events stream para updates em tempo real.
@@ -976,7 +891,7 @@ data: { "timestamp": "2026-02-14T10:30:00Z", "connections": 2 }
 
 **Heartbeat**: A cada 15 segundos para manter a conexao viva.
 
-### 7.7 Projects (Pilar 2)
+### 6.7 Projects (Pilar 2)
 
 #### `POST /api/projects`
 Cria um novo projeto a partir de um PRD.
@@ -1042,7 +957,7 @@ Detalhes de um projeto com stats de progresso.
 #### `DELETE /api/projects/:id`
 Remove um projeto e todos seus dados.
 
-### 7.8 Sprints (Pilar 2)
+### 6.8 Sprints (Pilar 2)
 
 #### `GET /api/projects/:id/sprints`
 Lista sprints de um projeto.
@@ -1061,7 +976,7 @@ Cria um novo sprint.
 #### `PATCH /api/projects/:projectId/sprints/:sprintId`
 Atualiza sprint (status, adicionar/remover tasks).
 
-### 7.9 PRD Tasks (Pilar 2)
+### 6.9 PRD Tasks (Pilar 2)
 
 #### `GET /api/projects/:id/tasks`
 Lista todas as tasks do projeto.
@@ -1110,7 +1025,7 @@ Atualiza uma task manualmente (para overrides do usuario).
 #### `GET /api/projects/:id/tasks/:taskId/activity`
 Historico de atividades de uma task (quais agentes tocaram, quais files, etc.)
 
-### 7.10 PRD Parsing (Pilar 2)
+### 6.10 PRD Parsing (Pilar 2)
 
 #### `POST /api/parse-prd`
 Parseia um PRD e retorna tasks sugeridas (sem criar projeto).
@@ -1165,7 +1080,7 @@ Parseia um PRD e retorna tasks sugeridas (sem criar projeto).
 
 3. **`manual`** - Usuario cria tasks manualmente no dashboard
 
-### 7.11 PRD Progress SSE Events (Pilar 2)
+### 6.11 PRD Progress SSE Events (Pilar 2)
 
 Novos event types no stream SSE (`GET /api/stream`):
 
@@ -1192,7 +1107,7 @@ event: correlation_match
 data: { "eventId": "evt_123", "taskId": "task_5", "confidence": 0.92, "reason": "TaskUpdate status match" }
 ```
 
-### 7.12 Stats
+### 6.12 Stats
 
 #### `GET /api/sessions/:id/stats`
 Metricas agregadas da sessao.
@@ -1230,9 +1145,9 @@ Metricas agregadas da sessao.
 
 ---
 
-## 8. Dashboard Components
+## 7. Dashboard Components
 
-### 8.1 AgentPanel
+### 7.1 AgentPanel
 
 **Descricao**: Painel lateral com lista de todos os agentes e seus status.
 
@@ -1248,7 +1163,7 @@ Metricas agregadas da sessao.
 - Modern: Cards com avatar identicon, badges
 - Terminal: Lista com status chars `[*] active  [-] idle  [!] error  [x] done`
 
-### 8.2 ActivityFeed
+### 7.2 ActivityFeed
 
 **Descricao**: Feed cronologico de eventos em tempo real.
 
@@ -1266,7 +1181,7 @@ Metricas agregadas da sessao.
 - Modern: Timeline vertical com cards expandiveis
 - Terminal: Log lines com timestamps, `grep`-like filtering
 
-### 8.3 FileWatcher
+### 7.3 FileWatcher
 
 **Descricao**: Arvore de arquivos com highlights de modificacoes.
 
@@ -1282,7 +1197,7 @@ Metricas agregadas da sessao.
 - Modern: Tree view com icons do VS Code, hover preview
 - Terminal: Estilo `git status` output com letras (M/A/R)
 
-### 8.4 StatsBar
+### 7.4 StatsBar
 
 **Descricao**: Barra de metricas agregadas no topo ou rodape.
 
@@ -1299,7 +1214,7 @@ Metricas agregadas da sessao.
 - Modern: Metrics cards minimalistas com trend arrows
 - Terminal: Status line estilo vim/tmux `[3 agents] [142 events] [5 errors] [23 files] [01:23:45]`
 
-### 8.5 AgentDetail
+### 7.5 AgentDetail
 
 **Descricao**: Painel de detalhes do agente selecionado.
 
@@ -1316,7 +1231,7 @@ Metricas agregadas da sessao.
 - Modern: Tab panel com secoes (Activity, Files, Errors, Messages)
 - Terminal: Paineis divididos com dados tabulares
 
-### 8.6 SessionTimeline
+### 7.6 SessionTimeline
 
 **Descricao**: Visualizacao temporal da sessao (mini Gantt chart).
 
@@ -1333,7 +1248,7 @@ Metricas agregadas da sessao.
 - Modern: Gantt chart limpo com gradients
 - Terminal: ASCII bars `[=====>------|!!|=====>]`
 
-### 8.7 KanbanBoard (Pilar 2)
+### 7.7 KanbanBoard (Pilar 2)
 
 **Descricao**: Quadro Kanban visual onde tasks se movem automaticamente entre colunas conforme agentes trabalham.
 
@@ -1354,7 +1269,7 @@ Metricas agregadas da sessao.
 - Modern: Cards estilo Linear com status dots, drag & drop smooth, glassmorphism
 - Terminal: Tabela com colunas separadas por `|`, status chars `[>] in_progress  [x] done  [!] blocked`
 
-### 8.8 SprintProgress (Pilar 2)
+### 7.8 SprintProgress (Pilar 2)
 
 **Descricao**: Indicador visual de progresso do sprint atual.
 
@@ -1371,7 +1286,7 @@ Metricas agregadas da sessao.
 - Modern: Progress ring circular com % no centro, mini chart de velocidade
 - Terminal: `Sprint MVP [=======>----] 62.5% (5/8)  ~2.1 tasks/hr`
 
-### 8.9 PRDOverview (Pilar 2)
+### 7.9 PRDOverview (Pilar 2)
 
 **Descricao**: Visao panoramica do PRD inteiro com secoes coloridas por status de completude.
 
@@ -1388,7 +1303,7 @@ Metricas agregadas da sessao.
 - Modern: Document outline com heat map de progresso, accordion expandivel
 - Terminal: Tree view com indicadores `[100%] Section 1  [ 50%] Section 2  [  0%] Section 3`
 
-### 8.10 DependencyGraph (Pilar 2)
+### 7.10 DependencyGraph (Pilar 2)
 
 **Descricao**: Grafo visual de dependencias entre tasks. Permite ver o caminho critico e gargalos.
 
@@ -1407,7 +1322,7 @@ Metricas agregadas da sessao.
 - Modern: Grafo limpo estilo Mermaid/D3, bezier curves, labels elegantes
 - Terminal: ASCII graph com box-drawing characters e setas `-->` `-->`
 
-### 8.11 BurndownChart (Pilar 2)
+### 7.11 BurndownChart (Pilar 2)
 
 **Descricao**: Grafico classico de burndown mostrando tasks restantes vs tempo.
 
@@ -1425,7 +1340,7 @@ Metricas agregadas da sessao.
 - Modern: Area chart smooth com gradients, responsive, animado
 - Terminal: ASCII sparkline `Tasks: 12 ▇▇▇▆▆▅▅▄▃▃▂▁ 0` com annotations
 
-### 8.12 ProjectSelector (Pilar 2)
+### 7.12 ProjectSelector (Pilar 2)
 
 **Descricao**: Switcher entre projetos e modo de visualizacao (Agent Monitor vs PRD Tracker vs Combined).
 
@@ -1444,89 +1359,244 @@ Metricas agregadas da sessao.
 - Modern: Command palette estilo Raycast/Spotlight com search
 - Terminal: `:project list` e `:project switch <name>`
 
-### 8.13 AgentMap (CORE FEATURE)
+### 7.13 AgentMap v2 - "Mission Floor" (CORE FEATURE)
 
-**Descricao**: Visualizacao interativa pixel art em tempo real onde agentes Claude Code sao representados como personagens que se movem entre zonas de atividade, interagem entre si e executam acoes visivelmente. Esta e a **feature central do produto** - o que diferencia o CAM de qualquer outra ferramenta de monitoring. Inspirado no OPES Big Brother.
+**Descricao**: Visualizacao interativa pixel art em tempo real onde agentes Claude Code sao representados como personagens com poses distintas por atividade, organizados em um espaco aberto hierarquico. Esta e a **feature central do produto** - o que diferencia o CAM de qualquer outra ferramenta de monitoring. Inspirado no OPES Big Brother.
 
-> **IMPORTANTE**: O Agent Map NAO e um tema. E um componente core que vive dentro do tema Modern (e qualquer tema). E a visualizacao principal que o usuario ve ao abrir o dashboard.
+> **IMPORTANTE**: O Agent Map NAO e um tema. E um componente core que vive dentro de qualquer tema. E a visualizacao principal que o usuario ve ao abrir o dashboard.
 
-**Conceito Visual**:
+> **DECISAO ARQUITETURAL (v2)**: O modelo anterior de "zonas fixas" (Code Zone, Command Zone, Rest Area, Done Zone) foi abandonado. Zonas fixas desperdicam espaco com agentes inativos e adicionam uma camada de abstracao que atrapalha a observabilidade real. O novo modelo "Mission Floor" e um espaco aberto onde agentes existem como entidades autonomas, e a informacao relevante (o que cada um FAZ agora) e exibida diretamente em cada agente.
+
+**Conceito Visual - Mission Floor**:
 ```
-+------------------------------------------------------------------+
-|                        AGENT MAP                                  |
-|                                                                   |
-|  +----------+     +----------+     +----------+     +----------+  |
-|  | CODE     |     | COMMAND  |     | COMMS    |     | RESEARCH |  |
-|  | ZONE     |     | ZONE     |     | HUB      |     | LAB      |  |
-|  |          |     |          |     |          |     |          |  |
-|  |  🧙 Lead |---->|  🗡️ Eng  |     | 🏹 Test  |<--->| 🛡️ Res  |  |
-|  | editing  |     | running  |     | sending  |     | reading  |  |
-|  | auth.ts  |     | tests    |     | message  |     | docs     |  |
-|  +----------+     +----------+     +----------+     +----------+  |
-|                                                                   |
-|  +----------+     +----------+                                    |
-|  | REST     |     | DONE     |    💬 "Auth module done!"          |
-|  | AREA     |     | ZONE     |    Lead --> Eng (balao de fala)    |
-|  |          |     |          |                                    |
-|  | 😴 Idle  |     | 🎉 Fin  |                                    |
-|  | zzZ...   |     | quest!   |                                    |
-|  +----------+     +----------+                                    |
-+------------------------------------------------------------------+
++================================================================+
+|  MISSION FLOOR                                    [3 active]   |
+|                                                                 |
+|  [sprite 48px]          [sprite 48px]         [sprite 48px]    |
+|  pose: CODING           pose: READING         pose: TERMINAL   |
+|  main                   explorer-1            test-writer      |
+|  "editing App.tsx"      "reading schema.sql"  "$ pnpm test"   |
+|  Edit > Read > Bash     Read > Glob > Grep    Bash > Read     |
+|       \                      /                                  |
+|        ------msg----------->                                   |
+|                                                                 |
+|  --- inactive ------------------------------------------------ |
+|  [mini] explorer-2 done 2m ago  |  [mini] researcher idle 45s |
++================================================================+
 ```
 
-**Zonas de Atividade (mapeadas automaticamente por tool usage)**:
+**Principio central**: Todo pixel serve observabilidade. Sem espaco desperdicado com agentes inativos. O que importa e VER o que cada agente esta fazendo AGORA.
 
-| Zona | Tools que ativam | Visual | Descricao |
-|------|-----------------|--------|-----------|
-| **Code Zone** | Edit, Write, Read, Glob, Grep | Sala com tela de codigo | Agente lendo/editando arquivos |
-| **Command Zone** | Bash | Sala com terminal | Agente executando comandos |
-| **Comms Hub** | SendMessage, Task tools | Sala com baloes | Agente se comunicando com outros |
-| **Research Lab** | WebSearch, WebFetch | Sala com livros/globo | Agente pesquisando na web |
-| **Task Board** | TaskCreate, TaskUpdate, TaskList | Sala com quadro | Agente gerenciando tasks |
-| **Rest Area** | (idle > 30s) | Sala com cama/fogueira | Agente descansando |
-| **Done Zone** | (completed/shutdown) | Sala com trofeu | Agente que terminou |
+#### Layout: 2 areas
 
-**Sprites dos Agentes**:
-- Renderizados em CSS pixel art (box-shadow sprites) ou Canvas 2D
-- Cada agente tem cor unica baseada no nome (hash -> paleta)
-- Tamanho: 24x24 ou 32x32 pixels
-- Estados de animacao:
-  | Estado | Animacao |
-  |--------|----------|
-  | `idle` | Personagem parado, piscando lentamente |
-  | `working` | Martelando/digitando, particulas de codigo saindo |
-  | `moving` | Caminhando (transicao entre zonas) |
-  | `talking` | Balao de dialogo aparece com preview da mensagem |
-  | `error` | Exclamacao vermelha, personagem tremendo |
-  | `completed` | Comemoracap, confete pixelado |
-  | `shutdown` | Personagem deita e dorme (zzZ) |
+| Area | Espaco | Conteudo |
+|------|--------|----------|
+| **Active Workspace** | ~80% | Agentes trabalhando com sprites grandes, activity labels, tool trail, linhas de comunicacao |
+| **Inactive Bar** | ~20% (bottom) | Agentes idle/done em miniatura com ultimo estado visivel |
 
-**Interacoes Visuais Entre Agentes**:
-- Quando Agent A envia SendMessage para Agent B: linha tracejada conecta os dois + balao de fala
-- Quando Agent A spawna Agent B (Task tool): Agent B aparece com animacao de "spawn" na zona de origem
-- Quando Agent A atribui task a Agent B (TaskUpdate): seta animada de A para B
-- Quando Team e deletado: agentes na Done Zone fazem animacao de "wave goodbye"
+- Agentes **sobem** para o workspace quando recebem atividade
+- Agentes **descem** para a inactive bar quando ficam idle > 30s ou completam
+- Transicao animada entre as duas areas
+- Main agent posicionado ao centro, subagentes ao redor (hierarquia visual)
 
-**Dados Necessarios (ja capturados pelos hooks existentes)**:
+#### Sprite System: Poses por Atividade
+
+Sprites renderizados em CSS pixel art (box-shadow) a 24x24 pixels com display 2x = 48x48px.
+Cada agente tem cor unica derivada do nome (hash -> paleta de 12 cores).
+
+**8 poses distintas mapeadas por tool usage**:
+
+| Pose | Tools que ativam | Visual (24x24 pixel art) | Descricao |
+|------|-----------------|--------------------------|-----------|
+| **CODING** | Edit, Write, NotebookEdit | Sentado em mesa, digitando, particulas de codigo | Agente editando/escrevendo codigo |
+| **READING** | Read, Glob, Grep | Segurando livro/scroll aberto | Agente lendo/explorando codebase |
+| **TERMINAL** | Bash | Em pe frente a monitor verde | Agente executando comandos |
+| **TALKING** | SendMessage | Pose com balao de fala ativo | Agente se comunicando |
+| **SEARCHING** | WebSearch, WebFetch | Com lupa brilhando, globo | Agente pesquisando na web |
+| **MANAGING** | TaskCreate, TaskUpdate, TaskList, TaskGet | Frente a um quadro/board | Agente gerenciando tasks |
+| **IDLE** | (inativo > 30s) | Sentado no chao, zZz flutuando | Agente descansando |
+| **CELEBRATING** | completed/shutdown | Bracos pra cima, confete pixelado | Agente que terminou trabalho |
+
+Cada pose tem 2-3 frames de animacao (loop continuo).
+Transicao entre poses: crossfade 300ms.
+
+#### Activity Labels
+
+Texto abaixo do sprite mostrando exatamente o que o agente faz:
+
+| Tool | Label gerado | Exemplo |
+|------|-------------|---------|
+| Read | `reading <filename>` | "reading schema.sql" |
+| Glob | `searching <pattern>` | "searching *.tsx" |
+| Grep | `grep "<pattern>"` | `grep "AgentZone"` |
+| Edit | `editing <filename>` | "editing index.ts" |
+| Write | `writing <filename>` | "writing new-file.ts" |
+| Bash | `$ <command>` | "$ pnpm test" |
+| SendMessage | `msg -> <recipient>` | "msg -> researcher" |
+| TaskCreate | `creating task` | "creating task" |
+| WebSearch | `search "<query>"` | `search "react hooks"` |
+| (idle) | `idle <N>s` | "idle 45s" |
+| (done) | `completed` / `shutdown` | "completed" |
+
+#### Agent Card (cada agente ativo)
+
+```
++--[agent-card]-------------------------+
+|  [sprite 48x48]                       |
+|  pose: CODING                         |
+|                                       |
+|  main                  active 2m 15s  |
+|  "editing App.tsx"                    |
+|  [Edit] [Read] [Bash] [Edit] [Read]  |
+|  12 tools | 0 errors                  |
++---------------------------------------+
+```
+
+Componentes do card:
+- **Sprite** com pose animada (48x48 display)
+- **Nome** do agente (bold, cor do agente)
+- **Activity label** (monospace, 10px, o que esta fazendo)
+- **Tool trail** (ultimas 5 tools como mini badges coloridos)
+- **Stats** compactos (total tools, errors, tempo ativo)
+- **Timer** (ativo ha X min ou idle Xs)
+
+#### Comunicacao Visual
+
+- **Linhas de mensagem**: SVG dashed lines animadas entre agentes que trocam SendMessage, com cor do agente remetente
+- **Spawn animation**: quando subagente e criado, sprite nasce com efeito de escala (0 -> 1) a partir da posicao do agente pai
+- **Shutdown animation**: sprite diminui e desce suavemente para a inactive bar
+- **Hierarchy lines**: linhas finas pontilhadas conectando agente pai a seus filhos (quem spawnou quem)
+- **Speech bubbles**: balao pixel art com preview da mensagem (60 chars) que aparece por 5s
+
+#### Posicionamento
+
+Agentes ativos sao posicionados no workspace usando logica hierarquica:
+- **Main agent**: centro horizontal, levemente acima do centro vertical
+- **Subagentes de 1o nivel**: distribuidos em semicirculo ao redor do main
+- **Subagentes de 2o nivel**: proximos ao pai que os spawnou
+- Quando ha apenas 1-2 agentes: centralizados com espaco
+- Quando ha 5+ agentes: grid responsivo que preenche o workspace
+
+#### Dados Necessarios (ja capturados pelos hooks)
+
 - `agent_id` + `status` -> qual agente, em qual estado
-- `tool` (de events) -> determina a zona atual
-- `SendMessage` events -> linhas de interacao entre agentes
-- `Task` tool calls -> spawn/shutdown de agentes
-- `TaskCreate`/`TaskUpdate` -> movimentacao de task cards
+- `tool` + `input` (de events) -> determina a pose + activity label
+- `SendMessage` events -> linhas de comunicacao + speech bubbles
+- `Task` tool calls -> spawn de agentes, hierarquia
+- Timestamps -> tempo ativo, idle detection
+- `agent_created` SSE event -> spawn animation
+- `agent_status` SSE event -> transicoes de estado
 
-**Implementacao Tecnica**:
-- **Rendering**: HTML5 Canvas 2D ou CSS Grid + CSS animations
-- **State machine**: Cada agente tem estado (zona, animacao, posicao)
-- **Transicoes**: CSS transitions suaves ao mudar de zona (500ms ease)
-- **SSE integration**: Novos eventos atualizam estado do agente -> mapa reage
-- **Responsivo**: Zonas reorganizam em grid responsivo
-- **Performance**: RequestAnimationFrame para animacoes, max 60fps
-- **Interatividade**: Click em agente abre AgentDetail panel
+#### Implementacao Tecnica
 
-**API necessaria (ja existente)**:
+- **Rendering**: CSS pixel art (box-shadow) para sprites + CSS Flexbox para layout + SVG para linhas
+- **State**: Zustand `agent-map-store` com posicoes, poses, labels, hierarquia
+- **Sync**: `use-agent-map-sync` hook que mapeia eventos -> poses + labels
+- **Poses**: Cada pose definida como array 2D de indices de cor, renderizada via box-shadow
+- **Transicoes**: CSS transitions (300ms) para movimento entre areas, crossfade para troca de pose
+- **SSE integration**: Eventos SSE atualizam estado -> componentes reagem
+- **Responsivo**: Workspace reorganiza em breakpoints (4 cols -> 2 cols -> 1 col)
+- **Performance**: React.memo em sprites, debounce em sync, max 60fps
+- **Interatividade**: Click em agente abre AgentDetail panel lateral
+
+#### API necessaria (ja existente)
+
 - `GET /api/sessions/:id/agents` - lista agentes e status
-- `GET /api/stream` (SSE) - eventos em tempo real
+- `GET /api/stream` (SSE) - eventos em tempo real + `agent_created` + `agent_status`
 - `GET /api/sessions/:id/events?agent_id=X` - historico do agente
+
+---
+
+## 8. Temas Visuais
+
+### 8.1 Pixel Art Theme ("Retro")
+
+**Conceito**: Dashboard estilo game boy / RPG dos anos 90. Cada agente e um personagem pixel art com animacoes de estado.
+
+**Visual**:
+- Background: Grid escuro com scan lines sutis
+- Fonte: Monospace pixelada (Press Start 2P ou similar)
+- Cores: Paleta limitada a 16 cores (estilo NES)
+- Bordas: Pixel borders (box-shadow steps)
+- Agentes: Sprites 32x32 com idle/working/error/done animations
+- Barra de progresso: Coracao/estrela que enche pixel a pixel
+- Notificacoes: Baloes de dialogo RPG
+
+**Agente Sprites (estados)**:
+| Estado | Animacao |
+|--------|----------|
+| `idle` | Personagem parado, piscando |
+| `working` | Martelando/digitando, particulas de codigo |
+| `error` | Exclamacao vermelha piscando, personagem tremendo |
+| `completed` | Comemoracap com confete pixelado |
+| `shutdown` | Personagem deita e dorme (zzZ) |
+
+**Layout**:
+- Top: Status bar estilo game (HP/MP = progresso/memoria)
+- Center: "Mapa" onde agentes se movem entre "salas" (tasks)
+- Bottom: Log estilo terminal RPG ("Agent-1 used Edit! It's super effective!")
+- Sidebar: Inventario = lista de arquivos modificados
+
+### 8.2 Modern Theme ("Clean")
+
+**Conceito**: Dashboard minimalista e profissional, inspirado em Linear/Vercel/Raycast.
+
+**Visual**:
+- Background: `#0a0a0a` com gradients sutis
+- Fonte: Inter/Geist (system)
+- Cores: Neutrals + accent color configuravel
+- Bordas: 1px borders com border-radius suave
+- Cards: Glassmorphism sutil com backdrop-blur
+- Motion: Framer Motion para transicoes suaves
+- Graficos: Area charts limpos para timeline
+
+**Layout**:
+- Top bar: Session info + tempo decorrido + agent count
+- Left sidebar: Lista de agentes com status dots (verde/amarelo/vermelho)
+- Center: Feed de atividades em tempo real (estilo git log visual)
+- Right panel: Detalhes do agente selecionado (tool calls, files, messages)
+- Bottom: Mini timeline/gantt dos agentes
+
+**Componentes especificos**:
+- Agent cards com avatar gerado (identicon/gradient)
+- Activity feed com icones por tipo de tool
+- File tree com highlights de arquivos modificados
+- Diff viewer inline para mudancas recentes
+- Toast notifications para eventos importantes
+
+### 8.3 Terminal Theme ("Hacker")
+
+**Conceito**: Interface 100% texto, estilo htop/lazygit/terminal multiplexer. Para quem vive no terminal.
+
+**Visual**:
+- Background: Preto puro `#000000`
+- Fonte: JetBrains Mono / Fira Code
+- Cores: Verde fosforescente (#00ff00) principal, amber (#ffaa00) warnings, red (#ff0000) errors
+- Sem bordas arredondadas - tudo reto, box-drawing characters
+- Efeito CRT opcional (curvatura + scan lines + flicker)
+- ASCII art para headers e separadores
+
+**Layout (paineis estilo tmux)**:
+```
++--[Agents]--+--[Activity Log]--+--[Details]--+
+| AG-1: work | 14:23 AG-1 Edit  | Tool: Edit   |
+| AG-2: idle | 14:23 AG-1 Read  | File: src/.. |
+| AG-3: done | 14:22 AG-2 Bash  | Duration: 3s |
++------------+-----------+------+--------------+
+| [Task List]            | [File Watcher]       |
+| [ ] Task 1 (AG-1)     | M src/index.ts       |
+| [x] Task 2 (AG-3)     | A src/new-file.ts    |
+| [ ] Task 3 (blocked)  | M package.json       |
++------------------------+----------------------+
+```
+
+**Caracteristicas**:
+- Keyboard-only navigation (vim keys: j/k/h/l)
+- Paineis redimensionaveis com drag
+- Filtros por tipo de evento (`:filter tool:Edit`)
+- Busca textual nos logs (`:search pattern`)
+- Auto-scroll com toggle (tecla `f` = follow mode)
+- Sparklines ASCII para metricas
 
 ---
 
@@ -1746,113 +1816,228 @@ cam progress --full
 
 ---
 
-## 10. Roadmap
+# PARTE 3 - EXECUTION (QUANDO construir)
 
-### MVP (v1.0) - "Mission Control"
-
-**Escopo**: Server local + Dashboard web + 2 Pilares + Agent Map + 3 temas
-
-**Sprint 1 - Core Infrastructure** (CONCLUIDO):
-- [x] Monorepo setup (pnpm workspaces)
-- [x] `@cam/shared` - tipos e schemas compartilhados
-- [x] `@cam/server` - Node.js + SQLite + REST API + SSE
-- [x] `@cam/hook` - binario ultra-leve para hooks
-- [x] `@cam/cli` - comandos basicos (init, start, status)
-- [x] Dashboard React + Vite + Zustand
-- [x] AgentPanel, ActivityFeed, FileWatcher, StatsBar, AgentDetail, SessionTimeline
-- [x] Tema Modern (default)
-- [x] PRD parser (structured mode)
-- [x] Correlation Engine (auto-matching events -> tasks)
-- [x] Project/Sprint data model + API endpoints
-- [x] KanbanBoard (auto-updating)
-- [x] SprintProgress, BurndownChart, DependencyGraph, PRDOverview, ProjectSelector
-- [x] Tema Terminal (keyboard-driven, ASCII)
-- [x] Tema Pixel Art (RPG aesthetic)
-- [x] Theme switcher component
-
-**Sprint 1 - Remaining** (3 tasks):
-- [ ] CLI completo (project, sprint, tasks, progress commands)
-- [ ] npm packaging + instalacao global
-- [ ] README + docs + examples
-
-**Sprint 2 - Agent Map** (CORE FEATURE - PROXIMO):
-- [ ] Arquitetura do componente AgentMap (Canvas vs CSS, state machine)
-- [ ] Sprites pixel art dos agentes (CSS box-shadow ou Canvas)
-- [ ] Mapa com zonas de atividade (Code, Command, Comms, Research, Task Board, Rest, Done)
-- [ ] Sistema de posicionamento (tool usage -> zona do agente)
-- [ ] Animacoes de estado (idle, working, moving, talking, error, completed)
-- [ ] Interacoes visuais (baloes de fala, linhas de comunicacao, spawn animations)
-- [ ] Integracao SSE (eventos em tempo real -> atualizacao do mapa)
-- [ ] Integracao no layout Modern (componente central do dashboard)
-- [ ] Click em agente -> abre AgentDetail
-- [ ] Responsividade e performance (60fps)
-
-**Sprint 1 - Deferred to v1.1**:
-- PRD parser AI-assisted mode (structured mode funciona bem)
-
-### v1.1 - "Intelligence"
-
-- [ ] PRD parser AI-assisted com estimativa de complexidade
-- [ ] Sugestoes automaticas de dependencias entre tasks
-- [ ] Theme customization (cores, fontes)
-- [ ] Export de sessao/projeto (JSON, CSV, Markdown report)
-- [ ] Diff viewer inline
-- [ ] Performance profiling (quais tools sao mais lentas)
-- [ ] Comparacao entre sessoes/sprints
-- [ ] Dark/Light mode no tema Modern
-
-### v2.0 - "Desktop App" (Tauri)
-
-**Escopo**: App desktop nativo com Tauri
-
-**Vantagens sobre web**:
-- Nao precisa de browser aberto
-- Notificacoes nativas do OS
-- System tray icon com status
-- Menor uso de memoria
-- Auto-start com login
-
-**Entregas**:
-- [ ] Tauri wrapper do dashboard existente
-- [ ] System tray com mini-status
-- [ ] Notificacoes nativas (errors, completions)
-- [ ] Auto-detect Claude Code sessions
-- [ ] Auto-start no login (configuravel)
-- [ ] Instalacao via `.dmg` / `.msi` / `.AppImage`
-
-### v3.0 - "VS Code Extension"
-
-**Escopo**: Extensao VS Code com panel integrado
-
-**Vantagens**:
-- Integrado no editor onde o dev ja trabalha
-- Zero friction (sem abrir nada extra)
-- Acesso direto aos arquivos modificados (click to open)
-- Status bar no VS Code
-
-**Entregas**:
-- [ ] VS Code extension com WebView panel
-- [ ] Status bar item (agent count, errors)
-- [ ] Activity feed como VS Code panel
-- [ ] Click-to-open em arquivos modificados
-- [ ] Decorators nos arquivos (quem editou, quando)
-- [ ] Command palette integration
-- [ ] Marketplace publishing
-
-### v4.0 - "Multi-machine" (Future)
-
-**Escopo**: Monitorar agentes rodando em diferentes maquinas
-
-- [ ] Server centralizado (pode ser cloud)
-- [ ] Autenticacao (API keys)
-- [ ] Multi-user dashboard
-- [ ] Historico persistente (PostgreSQL)
-- [ ] Alertas configuravei (Slack, Discord, email)
-- [ ] Metricas de custo estimado (tokens usados)
+> **Nota**: O tracking detalhado de tasks/sprints vive no banco de dados do CAM (dogfooding).
+> As listas abaixo sao resumos em alto nivel. Use `cam tasks` para o estado real.
 
 ---
 
-## 11. Estrutura de Arquivos
+## 10. MVP - v1.0 "Mission Control"
+
+Server local + Dashboard web + ambos os Pilares + Agent Map Mission Floor + 3 temas + CLI completo com 10 comandos + npm packaging + developer experience plug-and-play.
+
+Inclui toda a infraestrutura core: monorepo (pnpm workspaces), `@cam/shared` (tipos/schemas), `@cam/server` (Express + SQLite + REST + SSE), `@cam/hook` (zero-dep binary), `@cam/cli` (Commander.js), Dashboard (React 19 + Vite + Zustand + Tailwind 4). Todos os componentes de ambos os pilares implementados nos 3 temas. Agent Map v2 "Mission Floor" com sprites detalhados (8 poses), layout hierarquico, activity labels, e comunicacao visual entre agentes. Sprint 5 foca em transformar o CAM de "funciona pra quem buildou" em "qualquer dev instala e usa em 2 minutos".
+
+### Sprint 1 - Core Infrastructure (29 tasks) ✅
+
+- Monorepo setup (pnpm workspaces)
+- @cam/shared - tipos e schemas compartilhados
+- @cam/server - Node.js + SQLite + REST API + SSE
+- @cam/hook - binario ultra-leve para hooks
+- @cam/cli - comandos basicos (init, start, status)
+- Dashboard React + Vite + Zustand
+- Project/Sprint data model + API endpoints
+- Correlation Engine (auto-matching events -> tasks)
+- PRD parser (structured mode)
+- Tema Modern (default)
+- Tema Pixel Art (sprites, animacoes, RPG aesthetic)
+- Tema Terminal (keyboard-driven, ASCII)
+- Theme switcher component
+- AgentPanel (lista de agentes com status)
+- ActivityFeed (feed em tempo real)
+- FileWatcher (arvore de arquivos)
+- StatsBar (metricas agregadas)
+- AgentDetail (detalhes do agente)
+- SessionTimeline (Gantt dos agentes)
+- KanbanBoard (auto-updating)
+- SprintProgress (barra + stats)
+- PRDOverview (documento colorido)
+- DependencyGraph
+- BurndownChart
+- ProjectSelector (switcher de modos)
+- CLI completo (project, sprint, tasks, progress commands)
+- npm packaging + instalacao global
+- GitHub repo + CI/CD
+- README + docs + examples
+
+### Sprint 2 - Agent Map v1 (10 tasks) ✅ → substituido pelo Sprint 4
+
+> **Nota**: O Agent Map v1 (grid de zonas fixas) foi implementado e depois substituido pelo Sprint 4 (Mission Floor). As 10 tasks abaixo foram concluidas mas o resultado visual foi descartado em favor do novo design. A infraestrutura (activity labels, idle detection, SSE events) foi reaproveitada.
+
+- ~~Arquitetura do componente AgentMap~~
+- ~~Sprites pixel art dos agentes~~
+- ~~Mapa com 7 zonas de atividade~~
+- ~~Sistema de posicionamento (tool -> zona)~~
+- ~~Animacoes de estado dos agentes~~
+- ~~Interacoes visuais entre agentes~~
+- ~~Integracao SSE (tempo real)~~
+- ~~Click em agente -> AgentDetail~~
+- ~~Responsividade e performance (60fps)~~
+- ~~Integrar AgentMap em todos os temas~~
+
+### Sprint 3 - SSE Pilar 2 (2 tasks) 🔄
+
+- SSE real-time events for PRD Tracker (Pilar 2)
+- Dashboard SSE integration for Pilar 2 components
+
+### Sprint 4 - Agent Map v2: Mission Floor (16 tasks) 🔜
+
+Redesign completo do Agent Map. Substitui o grid de zonas fixas por um espaco aberto ("Mission Floor") com sprites detalhados que mudam de pose por atividade, activity labels mostrando exatamente o que cada agente faz, tool trail, hierarquia visual, e comunicacao animada entre agentes.
+
+**Secao 1 - Sprite System (4 tasks)**:
+- Sprite data format: sistema de definicao de poses como arrays 2D de pixels com paleta de cores tematica por agente (hash do nome -> cor base). Rendering via CSS box-shadow a 24x24 com display 2x (48x48px)
+- Poses de trabalho primarias: CODING (sentado digitando, particulas de codigo), READING (segurando scroll aberto), TERMINAL (em pe frente a monitor verde). 2-3 frames de animacao cada
+- Poses de trabalho secundarias: TALKING (com balao de fala ativo), SEARCHING (com lupa brilhando), MANAGING (frente a quadro/board). 2-3 frames cada
+- Poses de estado: IDLE (sentado no chao, zZz flutuando), CELEBRATING (bracos pra cima, confete pixelado). Transicao crossfade 300ms entre qualquer par de poses
+
+**Secao 2 - Mission Floor Layout (4 tasks)**:
+- MissionFloor component: substitui o AgentMapGrid. Duas areas: ActiveWorkspace (~80%) e InactiveBar (~20% bottom). Transicao animada quando agente muda entre areas
+- AgentCard component: card por agente ativo contendo sprite com pose animada, nome, activity label, tool trail (ultimas 5 tools como mini badges), stats compactos (tools, errors), timer (ativo ha Xm ou idle Xs)
+- InactiveBar component: barra inferior mostrando agentes idle/done em miniatura (sprite 24x24, nome, ultimo estado). Click promove agente de volta ao workspace se voltar ativo
+- Responsive layout: workspace reorganiza em breakpoints (4 cols desktop -> 2 cols tablet -> 1 col mobile). Integracao com todos os 3 temas via theme-registry
+
+**Secao 3 - Comunicacao e Dinamicas (4 tasks)**:
+- Hierarquia visual: linhas finas pontilhadas conectando agente pai a filhos. Main agent centralizado, subagentes distribuidos em semicirculo. Posicionamento hierarquico automatico
+- Linhas de comunicacao: SVG dashed lines animadas (particulas fluindo) entre agentes que trocam SendMessage. Cor do remetente. Speech bubbles pixel art com preview 60 chars, visivel por 5s
+- Spawn e shutdown animations: novo agente nasce com efeito scale(0->1) a partir da posicao do pai. Shutdown: sprite diminui e desliza suavemente para InactiveBar
+- Click interaction: click em agente ativo abre AgentDetail panel lateral. Click em agente inativo na bar mostra popup com ultimo estado e historico
+
+**Secao 4 - Polish e Performance (4 tasks)**:
+- Tool trail component: ultimas 5 tools renderizadas como mini badges coloridos abaixo do activity label. Cada tool type tem cor e abreviacao propria (Ed=blue, Rd=indigo, Bh=amber, Msg=purple, etc.)
+- Agent timer: contador em tempo real mostrando "ativo ha 2m 15s" ou "idle 45s". Atualiza a cada segundo para agentes ativos. Formatacao compacta
+- Posicionamento hierarquico: algoritmo que distribui agentes no workspace baseado em hierarquia (pai-filho). Main no centro, filhos ao redor, netos proximos aos pais. Reposiciona suavemente quando agentes entram/saem
+- Performance: React.memo em todos os sub-componentes, debounce de 100ms no sync, cleanup de speech bubbles/lines expirados, virtualizacao se > 10 agentes ativos
+
+### Sprint 5 - Developer Experience & Plug-and-Play (15 tasks) 🔜
+
+Transformar o CAM de "funciona pra quem buildou" em "qualquer dev instala e usa em 2 minutos". Hoje o CAM exige conhecimento tecnico demais para comecar (configurar hooks manualmente, entender WSL vs Windows, saber sobre tmux). Um iniciante deveria fazer `npm install -g claude-agent-monitor && cam init && cam start` e ver tudo funcionando.
+
+**Secao 1 - CLI Robusto (4 tasks)**:
+- `cam init` robusto: detectar `.claude/settings.json` existente, fazer merge inteligente de hooks (preservar hooks do usuario, adicionar os do CAM), funcionar em Windows/Mac/Linux, mostrar feedback claro do que foi configurado. Deve usar `cam-hook` (binario global) nos commands, NAO caminhos relativos
+- `cam-hook` como binario global funcional: quando instalado via `npm install -g`, o binario `cam-hook` deve estar no PATH e funcionar standalone (ler stdin JSON, fazer POST pro server). Testar instalacao global end-to-end
+- `cam start` integrado: um unico comando que inicia server + dashboard + abre browser + mostra status. Deve funcionar apos `npm install -g` (nao apenas em dev com `pnpm dev`)
+- `cam status` funcional: mostrar se o server esta rodando, quantas sessoes ativas, quantos eventos capturados, se os hooks estao configurados corretamente. Diagnostico rapido pra saber se ta tudo certo
+
+**Secao 2 - Dashboard Feedback Visual (4 tasks)**:
+- Connection status indicator: barra/badge permanente no dashboard mostrando "Conectado - capturando eventos" ou "Desconectado - aguardando server". Usar o heartbeat SSE que ja existe (15s). Visivel em todos os temas
+- Session lifecycle visual: quando SessionStart chega via SSE, mostrar notificacao/banner "Nova sessao iniciada". Quando SessionEnd chega, mostrar "Sessao encerrada". O dashboard ja recebe esses eventos mas nao faz nada visual com eles
+- Agent join/leave notifications: quando um agente aparece (agent_created SSE), mostrar toast "Agente X entrou". Quando sai (agent_status=shutdown), mostrar "Agente X finalizou". Feedback visual do time se formando
+- Empty state / onboarding: quando o dashboard abre sem sessao ativa, mostrar tela de "Aguardando conexao..." com instrucoes de como comecar (rodar `cam init`, rodar `claude` em outro terminal). Hoje mostra tela vazia
+
+**Secao 3 - Cross-Platform Reliability (3 tasks)**:
+- Documentar setup WSL: secao no README explicando uso com WSL/tmux, incluir `scripts/test-wsl-hook.sh` como ferramenta de diagnostico, explicar que tmux e OPCIONAL (modo in-process funciona sem ele)
+- Transport resilience: adicionar fallback no transport.ts (se gateway falha, tentar nameserver, tentar localhost). Adicionar log opcional (CAM_DEBUG=1) que mostra pra qual host esta enviando
+- `cam doctor` comando de diagnostico: verifica server rodando, hooks configurados, consegue fazer POST, mostra diagnostico claro de onde esta o problema. Essencial pra iniciantes que nao sabem debugar rede
+
+**Secao 4 - Zero-Config Agent Detection (2 tasks)**:
+- Funcionar sem tasks explicitas: o CAM deve mostrar atividade util mesmo com `claude "corrija o bug"` sem tasks/times. Activity feed, file watcher, e agent panel devem funcionar com um unico agente fazendo tool calls normais
+- Auto-detect team formation: quando Claude Code usa TeamCreate ou Task tool, o CAM deve automaticamente criar session group e mostrar agentes aparecendo. Testes end-to-end e polish da implementacao existente no event-processor
+
+**Secao 5 - Didactic Naming & Full Visibility (2 tasks)**:
+- Friendly Agent Naming System: agente principal exibido como "Main" (ou nome do projeto), subagentes usam o name do Task/TeamCreate (ex: "researcher"), se nao tem nome gera nome amigavel automatico via hash do session_id (estilo Docker: "brave-panda"). Session ID (8 chars) como subtitle discreto. Sessoes mostradas como "Sessao #1" ou "14:30 - 16 fev" com UUID no tooltip
+- Full Visibility - eliminar truncamentos: word-wrap por padrao em activity labels (nunca text-overflow ellipsis), file paths mostram filename como principal + path completo no tooltip, speech bubbles expandiveis ao clicar, agent cards com tamanho flexivel, comandos Bash com scroll horizontal. Regra: nenhum truncate sem mecanismo de "ver completo" associado
+
+### Sprint 6 - True Observability (11 tasks) 🔜
+
+O dashboard precisa mostrar a verdade. Descobertas do dogfooding real revelaram que nomes de agentes sao UUIDs aleatorios, contagens estao infladas, sessoes zumbi poluem a visualizacao, e o activity feed e repetitivo. Este sprint corrige tudo para que o monitoring seja genuinamente util.
+
+**Secao 1 - Hook Accuracy (3 tasks)**:
+- Implementar hook SubagentStart: novo handler que captura `agent_id` e `agent_type` do stdin quando um subagente nasce. Adicionar ao settings.json. O Claude Code JA fornece esses campos nativamente - so precisamos captura-los
+- Corrigir hardcode agent_id "main" em todos os handlers: pre-tool-use, post-tool-use, stop, subagent-stop, session-start, notification, compact. Usar `session_id` do stdin como `agent_id` real. Cada processo Claude Code tem session_id unico
+- Fix double counting de tool calls: `incrementToolCalls` roda tanto no PreToolUse quanto PostToolUse, inflando contagem 2x. Mudar para incrementar SOMENTE no PostToolUse
+
+**Secao 2 - Agent Identity (2 tasks)**:
+- Agent name resolution com 3 camadas: (1) `agent_type` do SubagentStart como fonte primaria, (2) `name` do Task tool input como fonte secundaria, (3) friendly name Docker-style como ultimo fallback. Persistir mapeamento session_id → nome real na tabela agents
+- Correlacao Task tool → session: quando main agent usa Task tool com `name: "cli-dev"`, guardar em fila de nomes pendentes. Quando nova sessao aparece no grupo (SessionStart), associar o proximo nome pendente a essa sessao. Atualizar agent.name retroativamente
+
+**Secao 3 - Session Lifecycle (3 tasks)**:
+- Janela de tempo para ativo/inativo: substituir deteccao fixa por janela configuravel (1m/3m/5m/10m). Agentes com atividade dentro da janela = ativos no workspace. Sem atividade = inativos na InactiveBar. UI selector no dashboard para trocar janela
+- Auto-cleanup de sessoes stale: job periodico no servidor que marca sessoes sem atividade ha mais de 10 minutos como "completed". Resolver sessoes zumbi (test-debug, test-wrapper, etc.) que ficam "active" eternamente por nunca receberem Stop event
+- Session picker no dashboard: dropdown/tabs no shell para alternar entre sessoes e session groups. Mostrar sessao/grupo ativo atual com stats resumidos. Historico de sessoes anteriores acessivel sem poluir a visualizacao principal
+
+**Secao 4 - Dashboard Accuracy (3 tasks)**:
+- Fix StatsBar Events count: usar `session.eventCount` do banco de dados em vez de `events.length` do Zustand store (que so conta eventos recebidos via SSE apos conexao). Garantir consistencia entre todas as metricas exibidas
+- Filtrar/agrupar TaskList repetitivo no Activity Feed: quando multiplos eventos TaskList consecutivos do mesmo agente, agrupar em "TaskList x5" ou permitir filtro por tool. Reduzir ruido no feed para destacar acoes reais (Edit, Bash, Write)
+- Completar Full Visibility server-side: remover ou aumentar significativamente `MAX_INPUT_LENGTH = 500` e `MAX_OUTPUT_LENGTH = 500` no constants.ts. O servidor trunca dados ANTES de chegar ao dashboard, impedindo que a UI mostre informacao completa mesmo com word-wrap
+
+### Sprint 7 - Correlation Engine v2: Reliable Task Tracking (17 tasks) 🔜
+
+Rewrite completo do Correlation Engine. O dogfooding real revelou que o sistema de correlacao automatica entre eventos de hooks e PRD tasks **nao funciona de forma confiavel**. O time do Sprint 5 completou 14 tasks mas nenhuma foi atualizada automaticamente no banco. A causa raiz: fuzzy matching por substring entre titulos em idiomas diferentes, sem contexto de sessao, sem binding de agente, sem IDs explicitos.
+
+**Estrategia: "Explicit First, Context Second, Fuzzy Last"** - inspirada em como Jira (PROJ-123 em commits), GitHub (#45 em PRs) e Linear (issue ID em branches) fazem correlacao: ID explicito como camada primaria, contexto como secundaria, fuzzy como fallback.
+
+**Secao 1 - Explicit ID Strategy (3 tasks)**:
+- PRD Task ID injection system via cam init --prd: gerar `.cam/task-map.json` mapeando PRD task IDs para titulos. Gerar secao no CLAUDE.md instruindo agentes a referenciar IDs. Pattern `[CAM:task-id]` em descriptions para match exato. Resolve o problema raiz: agentes nao sabem que PRD tasks existem
+- TaskCreate/TaskUpdate enhanced field extraction: extrair TODOS os campos de tool_input (subject, description, tags, priority, activeForm, taskId). Tags sao fonte direta de correlacao. Armazenar tool_input completo sem truncar
+- TaskList synchronization handler: parsear response do TaskList para obter tasks do Claude Code com statuses. Reconciliar contra PRD tasks por exact ID match e similaridade de titulo. Bulk-update divergencias
+
+**Secao 2 - Context Binding (3 tasks)**:
+- Session-to-Project binding automatico: quando SessionStart chega, verificar working_directory contra project paths. Auto-vincular sessao ao projeto. Toda correlacao subsequente filtra por aquele projeto (resolve scan O(n*m))
+- Agent-to-Task binding com confidence boost: quando agente e atribuido a task, criar binding (agent_id -> prd_task_id). Eventos subsequentes ganham bias +0.3. Binding expira quando task completa
+- Agent Context Window - estado por agente: manter current_task, last_10_tools, files_since_task_start, time_on_task. Usar para desambiguar matches. Persistir em memoria + DB
+
+**Secao 3 - Improved Matching (3 tasks)**:
+- Levenshtein + Jaro-Winkler similarity: substituir substring match por algoritmos proprios. Normalizar strings (lowercase, remover acentos, expandir abreviacoes). TypeScript puro, zero deps
+- Multi-signal scoring pipeline hierarquico: 5 layers - Exact ID (1.0), Tag match (0.85-0.95), Agent binding + file path (0.7-0.85), Title similarity (0.6-0.8), Keyword overlap (0.5-0.7). Parar na primeira camada com confianca suficiente
+- File-to-Task domain mapping: mapear file patterns -> task domains automaticamente a partir de PRD titles + tags
+
+**Secao 4 - Event Intelligence (2 tasks)**:
+- UserPromptSubmit intent detection: extrair intent do prompt do usuario, flaggar tasks como "in scope" (boost +0.2). Hook ja existe mas Correlation Engine ignora
+- Status inference state machine: IDLE -> RESEARCHING -> IMPLEMENTING -> TESTING -> COMPLETED. Per-agent per-task. Usar Bash exit codes como sinal forte
+
+**Secao 5 - Data Pipeline (2 tasks)**:
+- Remover truncamento artificial: MAX_INPUT/OUTPUT_LENGTH de 500/5000 para 50000. Dados truncados perdem task IDs criticos
+- Correlation audit log: tabela + endpoint para registrar toda tentativa de correlacao (sucesso e falha). Essencial para debugging e tuning
+
+**Secao 6 - Integration & Validation (2 tasks)**:
+- Dashboard correlation indicators: badges de confianca nos cards do Kanban (verde >0.95, amarelo >0.75, cinza manual). Debug panel com matches recentes
+- End-to-end correlation test suite: fixtures com payloads reais, testes por layer, pipeline completo, regressao para falhas conhecidas. Target: >90% accuracy
+
+**Secao 7 - Hooks & Event Chain (2 tasks)** (adicionadas via pesquisa online):
+- Novos hook handlers: TaskCompleted (fornece task_id + task_subject nativamente - GOLD para correlacao), SubagentStart (agent_id + agent_type), PostToolUseFailure (captura falhas). O Claude Code ja suporta esses hooks mas o CAM nao os captura
+- Correlation ID + Causation Chain: adicionar campos correlation_id e causation_id na tabela events. Padrao OpenTelemetry/Arkency - propagar contexto de task pela cadeia de eventos do mesmo agente. Permite agrupar "tudo que aconteceu para esta task" no dashboard
+
+---
+
+## 11. Backlog
+
+### v1.1 - "Intelligence" (14 tasks)
+
+- Theme customization (cores, fontes)
+- Export de sessao/projeto (JSON, CSV, Markdown report)
+- Diff viewer inline
+- Dark/Light mode no tema Modern
+- Performance profiling (quais tools sao mais lentas)
+- Comparacao entre sessoes/sprints
+- PRD parser AI-assisted com estimativa de complexidade
+- CLAUDE.md template with TaskTools instructions
+- Active task detection hook
+- Sugestoes automaticas de dependencias entre tasks
+- PRD/Workflow template for open-source distribution
+- Handler PreToolUseRejected no @cam/hook
+- Handler ToolError no @cam/hook
+- Keyboard navigation (vim keys) no Terminal theme
+
+### v2.0 - "Desktop App"
+
+App desktop nativo com Tauri: system tray com status, notificacoes nativas do OS, auto-detect de sessoes Claude Code, auto-start no login. Distribuicao via `.dmg` / `.msi` / `.AppImage`.
+
+### v3.0 - "VS Code Extension"
+
+Extensao VS Code com panel integrado: activity feed como VS Code panel, status bar item, click-to-open em arquivos modificados, decorators nos arquivos, command palette integration. Publicacao no Marketplace.
+
+### v4.0 - "Multi-machine"
+
+Server centralizado (cloud), autenticacao via API keys, multi-user dashboard, historico persistente (PostgreSQL), alertas configuraveis (Slack/Discord/email), metricas de custo estimado (tokens).
+
+---
+
+# PARTE 4 - REFERENCE
+
+---
+
+## 12. Estrutura de Arquivos
 
 ```
 claude-agent-monitor/
@@ -1881,6 +2066,10 @@ claude-agent-monitor/
 |   |       |   |-- sessions.ts
 |   |       |   |-- hooks.ts
 |   |       |   |-- theme.ts
+|   |       |   |-- project.ts  # cam project (list, show, import, archive)
+|   |       |   |-- sprint.ts   # cam sprint (list, create, status, activate)
+|   |       |   |-- tasks.ts    # cam tasks (list, filter)
+|   |       |   |-- progress.ts # cam progress (burndown terminal)
 |   |       |-- utils/
 |   |           |-- config.ts
 |   |           |-- hooks-config.ts
@@ -1943,6 +2132,7 @@ claude-agent-monitor/
 |   |       |   |-- filter-store.ts     # Filtros ativos
 |   |       |   |-- project-store.ts    # Projeto/sprint ativo (Pilar 2)
 |   |       |   |-- kanban-store.ts     # Estado do kanban (Pilar 2)
+|   |       |   |-- agent-map-store.ts  # Estado do Agent Map (zonas, agentes, animacoes)
 |   |       |-- hooks/
 |   |       |   |-- use-sse.ts          # Hook para SSE connection
 |   |       |   |-- use-session.ts      # Dados da sessao
@@ -1951,7 +2141,15 @@ claude-agent-monitor/
 |   |       |   |-- use-project.ts      # Dados do projeto (Pilar 2)
 |   |       |   |-- use-sprint.ts       # Dados do sprint (Pilar 2)
 |   |       |   |-- use-tasks.ts        # Tasks do PRD (Pilar 2)
+|   |       |   |-- use-agent-map-sync.ts # Bridge session-store -> agent-map-store
 |   |       |-- components/
+|   |       |   |-- agent-map/          # CORE FEATURE - Agent Map (compartilhado entre temas)
+|   |       |   |   |-- AgentMap.tsx    # Componente principal do mapa
+|   |       |   |   |-- AgentSprite.tsx # Sprite pixel art do agente (CSS box-shadow)
+|   |       |   |   |-- MapZone.tsx     # Zona de atividade (Code, Command, Comms, etc.)
+|   |       |   |   |-- MapLayout.tsx   # Layout wrapper usado por todos os temas
+|   |       |   |   |-- InteractionLine.tsx  # Linhas de comunicacao entre agentes
+|   |       |   |   |-- SpeechBubble.tsx     # Baloes de fala
 |   |       |   |-- layout/
 |   |       |   |   |-- Shell.tsx       # Layout shell (varia por tema)
 |   |       |   |   |-- ThemeSwitcher.tsx
@@ -2047,6 +2245,7 @@ claude-agent-monitor/
 |           |   |-- files.ts      # FileChange
 |           |   |-- projects.ts   # Project, Sprint, PRDTask (Pilar 2)
 |           |   |-- correlation.ts # TaskActivity, correlation types (Pilar 2)
+|           |   |-- agent-map.ts  # AgentMapState, MapZone, SpriteState
 |           |   |-- index.ts      # re-exports
 |           |-- constants.ts  # Portas default, timeouts, etc.
 |           |-- schemas.ts    # Zod schemas para validacao (ambos pilares)
@@ -2065,20 +2264,20 @@ claude-agent-monitor/
 
 ---
 
-## Apendice A: Questoes em Aberto
+## Apendice A: Decisoes Tecnicas
 
-| # | Questao | Opcoes | Decisao |
-|---|---------|--------|---------|
-| 1 | Framework do server | Express vs Fastify vs Hono | TBD |
-| 2 | Bundling do hook binary | esbuild single file vs pkg | TBD |
-| 3 | Persistencia | SQLite vs LevelDB vs in-memory only | SQLite (provavel) |
-| 4 | Sprites do tema Pixel | Criar do zero vs asset pack | TBD |
-| 5 | Monorepo tool | pnpm workspaces vs turborepo vs nx | pnpm workspaces (provavel) |
-| 6 | Keyboard nav no tema Terminal | Custom vs xterm.js | Custom (provavel) |
-| 7 | Graph layout (DependencyGraph) | dagre vs elk vs d3-force | TBD |
-| 8 | Kanban drag & drop | dnd-kit vs @hello-pangea/dnd | TBD |
-| 9 | AI PRD parser | Local LLM vs API (Claude/GPT) vs ambos | TBD |
-| 10 | Fuzzy matching (Correlation Engine) | fuse.js vs custom vs embedding-based | TBD |
+| # | Questao | Decisao | Status |
+|---|---------|---------|--------|
+| 1 | Framework do server | **Express** | Implementado |
+| 2 | Bundling do hook binary | **esbuild** (tsc build) | Implementado |
+| 3 | Persistencia | **SQLite** (better-sqlite3, WAL mode) | Implementado |
+| 4 | Sprites do tema Pixel | **CSS box-shadow pixel art** (16x16, 3 frames) | Implementado |
+| 5 | Monorepo tool | **pnpm workspaces** | Implementado |
+| 6 | Keyboard nav no tema Terminal | **Custom** | Implementado |
+| 7 | Graph layout (DependencyGraph) | TBD | Em aberto |
+| 8 | Kanban drag & drop | TBD | Em aberto |
+| 9 | AI PRD parser | TBD (deferred para v1.1) | Em aberto |
+| 10 | Fuzzy matching (Correlation Engine) | TBD | Em aberto |
 
 ## Apendice B: Metricas de Sucesso
 
@@ -2114,5 +2313,7 @@ claude-agent-monitor/
 
 ---
 
-*Documento gerado em 2026-02-14. Versao 2.0.0-draft.*
+*Documento gerado em 2026-02-14. Versao 3.0.0.*
 *Atualizado com Pilar 2 (PRD Tracker) em 2026-02-14.*
+*Reorganizado: roadmap simplificado, tracking granular via DB (dogfooding) em 2026-02-16.*
+*Reestruturado: template 4 partes (PRD/SPEC/EXECUTION/REFERENCE) em 2026-02-16.*

@@ -99,11 +99,15 @@ export function ModernKanban() {
 }
 
 function KanbanCard({ task }: { task: PRDTask }) {
+  const { selectTask, selectedTaskId } = useProjectStore();
   const priorityStyle = getPriorityColor(task.priority);
   const agentColor = task.assignedAgent ? generateIdenticon(task.assignedAgent) : null;
 
   return (
-    <div className="modern-card p-2.5 cursor-pointer group">
+    <div
+      className={`modern-card p-2.5 cursor-pointer group ${selectedTaskId === task.id ? 'ring-1 ring-cam-accent' : ''}`}
+      onClick={() => selectTask(task.id)}
+    >
       {/* Priority + Complexity */}
       <div className="flex items-center gap-1.5 mb-1.5">
         <span className={`text-[9px] px-1.5 py-0.5 rounded border font-medium ${priorityStyle}`}>
