@@ -8,11 +8,14 @@ export const hookTypeSchema = z.enum([
   'Notification',
   'Stop',
   'SubagentStop',
+  'SubagentStart',
   'PreCompact',
   'PostCompact',
   'PreToolUseRejected',
   'ToolError',
   'SessionStart',
+  'SessionEnd',
+  'UserPromptSubmit',
 ]);
 
 export const eventCategorySchema = z.enum([

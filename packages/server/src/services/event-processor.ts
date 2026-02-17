@@ -63,7 +63,10 @@ function categorizeEvent(hookType: HookType, toolName?: string): EventCategory {
   if (
     hookType === "Stop" ||
     hookType === "SubagentStop" ||
-    hookType === "SessionStart"
+    hookType === "SubagentStart" ||
+    hookType === "SessionStart" ||
+    hookType === "SessionEnd" ||
+    hookType === "UserPromptSubmit"
   )
     return "lifecycle";
   if (hookType === "ToolError" || hookType === "PreToolUseRejected")

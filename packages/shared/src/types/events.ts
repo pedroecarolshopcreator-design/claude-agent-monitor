@@ -20,6 +20,7 @@ export type HookType =
   | 'Notification'
   | 'Stop'
   | 'SubagentStop'
+  | 'SubagentStart'
   | 'PreCompact'
   | 'PostCompact'
   | 'PreToolUseRejected'
