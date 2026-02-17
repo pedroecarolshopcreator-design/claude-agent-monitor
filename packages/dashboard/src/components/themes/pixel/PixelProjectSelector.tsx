@@ -1,30 +1,37 @@
-import { useProjectStore, type ViewMode } from '../../../stores/project-store';
-
-const VIEW_OPTIONS: { id: ViewMode; label: string; icon: string }[] = [
-  { id: 'map', label: 'MAP', icon: '[A]' },
-  { id: 'monitor', label: 'MONITOR', icon: '[M]' },
-  { id: 'tracker', label: 'TRACKER', icon: '[T]' },
-  { id: 'mission-control', label: 'MISSION', icon: '[C]' },
-];
+import { useProjectStore } from '../../../stores/project-store';
 
 export function PixelProjectSelector() {
-  const { viewMode, setViewMode } = useProjectStore();
+  const { viewMode, setViewMode, activeProject } = useProjectStore();
 
   return (
-    <div className="flex items-center gap-1">
-      {VIEW_OPTIONS.map((opt) => (
+    <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1">
         <button
-          key={opt.id}
-          onClick={() => setViewMode(opt.id)}
-          className={`pixel-btn text-[9px] px-2 py-1 ${
-            viewMode === opt.id
-              ? 'bg-pixel-green text-black'
-              : 'text-pixel-dim hover:text-pixel-green'
-          }`}
+          onClick={() => setViewMode('agents')}
+          className="pixel-text-xs px-2 py-1 transition-colors"
+          style={{
+            color: viewMode === 'agents' ? 'var(--pixel-gold)' : 'var(--pixel-text-muted)',
+            border: viewMode === 'agents' ? '2px solid var(--pixel-gold)' : '2px solid var(--pixel-border)',
+          }}
         >
-          {opt.icon} {opt.label}
+          [A] AGENTS
         </button>
-      ))}
+        <button
+          onClick={() => setViewMode('tracker')}
+          className="pixel-text-xs px-2 py-1 transition-colors"
+          style={{
+            color: viewMode === 'tracker' ? 'var(--pixel-gold)' : 'var(--pixel-text-muted)',
+            border: viewMode === 'tracker' ? '2px solid var(--pixel-gold)' : '2px solid var(--pixel-border)',
+          }}
+        >
+          [T] TRACKER
+        </button>
+      </div>
+      {activeProject && (
+        <span className="pixel-text-xs" style={{ color: 'var(--pixel-text-muted)' }}>
+          {activeProject.completedTasks}/{activeProject.totalTasks}
+        </span>
+      )}
     </div>
   );
 }

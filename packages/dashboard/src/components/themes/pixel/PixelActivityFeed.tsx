@@ -7,6 +7,7 @@ import {
   getAgentDisplayName,
   extractFilename,
 } from "../../../lib/friendly-names.js";
+import { formatToolName, formatEventInput, formatEventOutput } from "../../../lib/event-formatters.js";
 import type { AgentEvent } from "@cam/shared";
 
 const POLLING_TOOLS = new Set(["TaskList", "TaskGet"]);
@@ -260,10 +261,13 @@ function EventItem({
   groupCount?: number;
   onToggle: () => void;
 }) {
+  const [showRawJson, setShowRawJson] = useState(false);
   const icon = getCategoryIcon(event.category);
+  // For MCP tools, use formatted name in the action text
+  const formattedTool = formatToolName(event.tool || event.hookType);
   const action =
     TOOL_ACTIONS[event.tool || ""] ||
-    `used ${(event.tool || event.hookType).toUpperCase()}!`;
+    `used ${formattedTool.toUpperCase()}!`;
   const effectiveness = getEffectiveness(event);
 
   return (
@@ -303,6 +307,7 @@ function EventItem({
             <span
               className="pixel-text-xs"
               style={{ color: "var(--pixel-text)" }}
+              title={event.tool || event.hookType}
             >
               {action}
             </span>
@@ -354,7 +359,7 @@ function EventItem({
 
           {/* Expanded Content */}
           {isExpanded && (
-            <div className="mt-2 space-y-2">
+            <div className="mt-2 space-y-2" onClick={(e) => e.stopPropagation()}>
               {event.input && (
                 <div>
                   <span
@@ -372,7 +377,7 @@ function EventItem({
                       fontFamily: "'Press Start 2P', monospace",
                     }}
                   >
-                    {event.input}
+                    {showRawJson ? event.input : formatEventInput(event.tool, event.input)}
                   </pre>
                 </div>
               )}
@@ -393,18 +398,32 @@ function EventItem({
                       fontFamily: "'Press Start 2P', monospace",
                     }}
                   >
-                    {event.output}
+                    {showRawJson ? event.output : formatEventOutput(event.output)}
                   </pre>
                 </div>
               )}
-              {event.duration !== undefined && (
-                <span
-                  className="pixel-text-xs"
-                  style={{ color: "var(--pixel-text-dim)" }}
-                >
-                  CAST TIME: {event.duration}ms
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                {event.duration !== undefined && (
+                  <span
+                    className="pixel-text-xs"
+                    style={{ color: "var(--pixel-text-dim)" }}
+                  >
+                    CAST TIME: {event.duration}ms
+                  </span>
+                )}
+                {(event.input || event.output) && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowRawJson(!showRawJson);
+                    }}
+                    className="pixel-text-xs pixel-btn"
+                    style={{ padding: "0 4px", fontSize: "7px" }}
+                  >
+                    {showRawJson ? "SUMMARY" : "RAW"}
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>

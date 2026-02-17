@@ -100,12 +100,28 @@ function extractFilePath(
 
   for (const src of sources) {
     if (!src) continue;
-    const toolInput = (src["tool_input"] ?? src) as Record<string, unknown>;
-    if (typeof toolInput !== "object" || toolInput === null) continue;
 
-    const path =
-      toolInput["file_path"] ?? toolInput["path"] ?? toolInput["filePath"];
-    if (typeof path === "string") return path;
+    // Check top-level file_path first (hook sends it directly in data)
+    const directPath = src["file_path"] ?? src["path"] ?? src["filePath"];
+    if (typeof directPath === "string") return directPath;
+
+    // Check inside tool_input
+    let toolInput = src["tool_input"];
+
+    // If tool_input is a string (serialized JSON), parse it
+    if (typeof toolInput === "string") {
+      try {
+        toolInput = JSON.parse(toolInput);
+      } catch {
+        continue;
+      }
+    }
+
+    if (typeof toolInput === "object" && toolInput !== null) {
+      const ti = toolInput as Record<string, unknown>;
+      const path = ti["file_path"] ?? ti["path"] ?? ti["filePath"];
+      if (typeof path === "string") return path;
+    }
   }
 
   return undefined;

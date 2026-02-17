@@ -7,6 +7,7 @@ import {
   getAgentDisplayName,
   extractFilename,
 } from "../../../lib/friendly-names.js";
+import { formatToolName, formatEventInput, formatEventOutput } from "../../../lib/event-formatters.js";
 import type { AgentEvent } from "@cam/shared";
 
 const POLLING_TOOLS = new Set(["TaskList", "TaskGet"]);
@@ -207,11 +208,15 @@ function LogLine({
   groupCount?: number;
   onToggle: () => void;
 }) {
+  const [showRawJson, setShowRawJson] = useState(false);
   const toolSym = TOOL_SYMBOLS[event.tool || ""] || "...";
   const catPrefix = CATEGORY_PREFIX[event.category] || "??? ";
   const isError = event.category === "error" || !!event.error;
   const agentDisplayName =
     agentNameMap.get(event.agentId) ?? event.agentId.slice(0, 8);
+
+  // Use formatted tool name for the title tooltip
+  const formattedToolName = formatToolName(event.tool || event.hookType);
 
   return (
     <div
@@ -234,7 +239,7 @@ function LogLine({
         >
           {catPrefix}
         </span>
-        <span className="shrink-0 w-[28px] ml-1 text-[#00ccff]">{toolSym}</span>
+        <span className="shrink-0 w-[28px] ml-1 text-[#00ccff]" title={formattedToolName}>{toolSym}</span>
         {groupCount && groupCount > 1 && (
           <span className="shrink-0 ml-1 text-[#ffaa00]">x{groupCount}</span>
         )}
@@ -260,28 +265,53 @@ function LogLine({
 
       {/* Expanded content */}
       {isExpanded && (
-        <div className="ml-4 mt-1 mb-1 border-l border-[#1a3a1a] pl-2">
+        <div className="ml-4 mt-1 mb-1 border-l border-[#1a3a1a] pl-2" onClick={(e) => e.stopPropagation()}>
           {event.input && (
             <div className="mb-1">
               <span className="terminal-muted">{">>> INPUT:"}</span>
-              <pre className="text-[10px] text-[#00aa00] whitespace-pre-wrap break-all mt-0.5 max-h-28 overflow-y-auto terminal-scrollbar bg-[#050505] p-1 border border-[#1a3a1a]">
-                {event.input}
-              </pre>
+              {showRawJson ? (
+                <pre className="text-[10px] text-[#00aa00] whitespace-pre-wrap break-all mt-0.5 max-h-28 overflow-y-auto terminal-scrollbar bg-[#050505] p-1 border border-[#1a3a1a]">
+                  {event.input}
+                </pre>
+              ) : (
+                <pre className="text-[10px] text-[#00aa00] whitespace-pre-wrap break-all mt-0.5 max-h-28 overflow-y-auto terminal-scrollbar bg-[#050505] p-1 border border-[#1a3a1a]">
+                  {formatEventInput(event.tool, event.input)}
+                </pre>
+              )}
             </div>
           )}
           {event.output && (
             <div className="mb-1">
               <span className="terminal-muted">{"<<< OUTPUT:"}</span>
-              <pre className="text-[10px] text-[#00aa00] whitespace-pre-wrap break-all mt-0.5 max-h-28 overflow-y-auto terminal-scrollbar bg-[#050505] p-1 border border-[#1a3a1a]">
-                {event.output}
-              </pre>
+              {showRawJson ? (
+                <pre className="text-[10px] text-[#00aa00] whitespace-pre-wrap break-all mt-0.5 max-h-28 overflow-y-auto terminal-scrollbar bg-[#050505] p-1 border border-[#1a3a1a]">
+                  {event.output}
+                </pre>
+              ) : (
+                <pre className="text-[10px] text-[#00aa00] whitespace-pre-wrap break-all mt-0.5 max-h-28 overflow-y-auto terminal-scrollbar bg-[#050505] p-1 border border-[#1a3a1a]">
+                  {formatEventOutput(event.output)}
+                </pre>
+              )}
             </div>
           )}
-          {event.duration !== undefined && (
-            <span className="terminal-dim text-[10px]">
-              {"--- duration: " + event.duration + "ms ---"}
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {event.duration !== undefined && (
+              <span className="terminal-dim text-[10px]">
+                {"--- duration: " + event.duration + "ms ---"}
+              </span>
+            )}
+            {(event.input || event.output) && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowRawJson(!showRawJson);
+                }}
+                className="text-[9px] px-1 py-0.5 border border-[#1a3a1a] hover:border-[#00aa00] text-[#006600] hover:text-[#00ff00] transition-colors"
+              >
+                {showRawJson ? "[SUMMARY]" : "[RAW]"}
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>

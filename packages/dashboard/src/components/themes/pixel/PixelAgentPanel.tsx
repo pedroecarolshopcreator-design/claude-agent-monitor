@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { useSessionStore } from "../../../stores/session-store";
 import { useAgents } from "../../../hooks/use-agents";
 import { formatRelativeTime, generateIdenticon } from "../../../lib/formatters";
@@ -56,9 +57,27 @@ function getStatusLabel(status: string): { text: string; color: string } {
   }
 }
 
+function isActiveAgent(agent: Agent): boolean {
+  return agent.status === 'active';
+}
+
 export function PixelAgentPanel() {
   const agents = useAgents();
   const { selectedAgentId, selectAgent } = useSessionStore();
+  const [showInactive, setShowInactive] = useState(false);
+
+  const { activeAgents, inactiveAgents } = useMemo(() => {
+    const active: Agent[] = [];
+    const inactive: Agent[] = [];
+    for (const agent of agents) {
+      if (isActiveAgent(agent)) {
+        active.push(agent);
+      } else {
+        inactive.push(agent);
+      }
+    }
+    return { activeAgents: active, inactiveAgents: inactive };
+  }, [agents]);
 
   if (agents.length === 0) {
     return (
@@ -82,25 +101,113 @@ export function PixelAgentPanel() {
 
   return (
     <div className="p-2">
+      {/* Active Agents */}
       <div className="px-2 py-2 mb-2">
         <span className="pixel-text-xs" style={{ color: "var(--pixel-gold)" }}>
-          PARTY ({agents.length})
+          ACTIVE PARTY ({activeAgents.length})
         </span>
       </div>
 
-      <div className="space-y-2">
-        {agents.map((agent) => (
-          <AgentCard
-            key={agent.id}
-            agent={agent}
-            isSelected={selectedAgentId === agent.id}
-            onSelect={() =>
-              selectAgent(selectedAgentId === agent.id ? null : agent.id)
-            }
-          />
-        ))}
-      </div>
+      {activeAgents.length > 0 ? (
+        <div className="space-y-2">
+          {activeAgents.map((agent) => (
+            <AgentCard
+              key={agent.id}
+              agent={agent}
+              isSelected={selectedAgentId === agent.id}
+              onSelect={() =>
+                selectAgent(selectedAgentId === agent.id ? null : agent.id)
+              }
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="px-2 py-3 text-center">
+          <p className="pixel-text-xs" style={{ color: "var(--pixel-text-muted)" }}>
+            NO ACTIVE HEROES
+          </p>
+        </div>
+      )}
+
+      {/* Inactive Agents - Collapsible */}
+      {inactiveAgents.length > 0 && (
+        <div className="mt-3">
+          <button
+            onClick={() => setShowInactive(!showInactive)}
+            className="w-full text-left px-2 py-1.5 pixel-card"
+            style={{ cursor: "pointer" }}
+          >
+            <div className="flex items-center justify-between">
+              <span className="pixel-text-xs" style={{ color: "var(--pixel-text-dim)" }}>
+                {showInactive ? "\u25BC" : "\u25B6"} FALLEN/RESTING
+              </span>
+              <span
+                className="pixel-text-xs"
+                style={{
+                  color: "var(--pixel-gold)",
+                  background: "var(--pixel-bg-dark)",
+                  border: "1px solid var(--pixel-border)",
+                  padding: "0 4px",
+                }}
+              >
+                {inactiveAgents.length}
+              </span>
+            </div>
+          </button>
+
+          {showInactive && (
+            <div className="space-y-1 mt-1">
+              {inactiveAgents.map((agent) => (
+                <CompactAgentCard
+                  key={agent.id}
+                  agent={agent}
+                  isSelected={selectedAgentId === agent.id}
+                  onSelect={() =>
+                    selectAgent(selectedAgentId === agent.id ? null : agent.id)
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
+  );
+}
+
+function CompactAgentCard({
+  agent,
+  isSelected,
+  onSelect,
+}: {
+  agent: Agent;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  const displayName = getAgentDisplayName(agent.id, agent.name);
+  const status = getStatusLabel(agent.status);
+  const icon = getAgentIcon(agent);
+
+  return (
+    <button
+      onClick={onSelect}
+      title={`${agent.name} (${agent.id})`}
+      className={`w-full text-left px-2 py-1 ${isSelected ? "pixel-border-accent" : "pixel-card"}`}
+      style={{ cursor: "pointer" }}
+    >
+      <div className="flex items-center gap-2">
+        <span className="pixel-text-xs">{icon}</span>
+        <span className="pixel-text-xs truncate flex-1" style={{ color: "var(--pixel-text-dim)" }}>
+          {displayName}
+        </span>
+        <span className="pixel-text-xs" style={{ color: status.color }}>
+          {status.text}
+        </span>
+        <span className="pixel-text-xs" style={{ color: "var(--pixel-text-dim)" }}>
+          {formatRelativeTime(agent.lastActivityAt)}
+        </span>
+      </div>
+    </button>
   );
 }
 

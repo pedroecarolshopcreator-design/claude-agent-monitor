@@ -8,6 +8,7 @@ import {
   getAgentDisplayName,
   extractFilename,
 } from "../../../lib/friendly-names.js";
+import { formatToolName, formatEventInput, formatEventOutput } from "../../../lib/event-formatters.js";
 import type { AgentEvent } from "@cam/shared";
 
 const POLLING_TOOLS = new Set(["TaskList", "TaskGet"]);
@@ -223,9 +224,11 @@ function EventItem({
   groupCount?: number;
   onToggle: () => void;
 }) {
+  const [showRawJson, setShowRawJson] = useState(false);
   const icon = TOOL_ICONS[event.tool || ""] || "\u25CF";
   const categoryColor = getCategoryColor(event.category);
   const agentDisplayName = agentNameMap.get(event.agentId) ?? event.agentId;
+  const displayToolName = formatToolName(event.tool || event.hookType);
 
   return (
     <div
@@ -241,8 +244,8 @@ function EventItem({
         {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className={`text-xs font-medium ${categoryColor}`}>
-              {event.tool || event.hookType}
+            <span className={`text-xs font-medium ${categoryColor}`} title={event.tool || event.hookType}>
+              {displayToolName}
               {groupCount && groupCount > 1 && (
                 <span className="ml-1 px-1 py-0 rounded bg-cam-surface-2 text-cam-text-muted text-[9px]">
                   x{groupCount}
@@ -284,15 +287,21 @@ function EventItem({
                 transition={{ duration: 0.15 }}
                 className="overflow-hidden"
               >
-                <div className="mt-2 space-y-2">
+                <div className="mt-2 space-y-2" onClick={(e) => e.stopPropagation()}>
                   {event.input && (
                     <div>
                       <span className="text-[10px] uppercase tracking-wider text-cam-text-muted">
                         Input
                       </span>
-                      <pre className="mt-0.5 text-[11px] text-cam-text-secondary font-mono bg-cam-bg rounded p-2 overflow-x-auto max-h-32 modern-scrollbar whitespace-pre-wrap break-all">
-                        {event.input}
-                      </pre>
+                      {showRawJson ? (
+                        <pre className="mt-0.5 text-[11px] text-cam-text-secondary font-mono bg-cam-bg rounded p-2 overflow-x-auto max-h-32 modern-scrollbar whitespace-pre-wrap break-all">
+                          {event.input}
+                        </pre>
+                      ) : (
+                        <p className="mt-0.5 text-[11px] text-cam-text-secondary bg-cam-bg rounded p-2 break-words">
+                          <span className="font-mono">{formatEventInput(event.tool, event.input)}</span>
+                        </p>
+                      )}
                     </div>
                   )}
                   {event.output && (
@@ -300,16 +309,35 @@ function EventItem({
                       <span className="text-[10px] uppercase tracking-wider text-cam-text-muted">
                         Output
                       </span>
-                      <pre className="mt-0.5 text-[11px] text-cam-text-secondary font-mono bg-cam-bg rounded p-2 overflow-x-auto max-h-32 modern-scrollbar whitespace-pre-wrap break-all">
-                        {event.output}
-                      </pre>
+                      {showRawJson ? (
+                        <pre className="mt-0.5 text-[11px] text-cam-text-secondary font-mono bg-cam-bg rounded p-2 overflow-x-auto max-h-32 modern-scrollbar whitespace-pre-wrap break-all">
+                          {event.output}
+                        </pre>
+                      ) : (
+                        <p className="mt-0.5 text-[11px] text-cam-text-secondary bg-cam-bg rounded p-2 break-words">
+                          <span className="font-mono">{formatEventOutput(event.output)}</span>
+                        </p>
+                      )}
                     </div>
                   )}
-                  {event.duration !== undefined && (
-                    <span className="text-[10px] text-cam-text-muted">
-                      Duration: {event.duration}ms
-                    </span>
-                  )}
+                  <div className="flex items-center gap-3">
+                    {event.duration !== undefined && (
+                      <span className="text-[10px] text-cam-text-muted">
+                        Duration: {event.duration}ms
+                      </span>
+                    )}
+                    {(event.input || event.output) && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowRawJson(!showRawJson);
+                        }}
+                        className="text-[9px] px-1.5 py-0.5 rounded bg-cam-surface-2 text-cam-text-muted border border-cam-border hover:text-cam-text hover:border-cam-accent/30 transition-colors"
+                      >
+                        {showRawJson ? "Resumo" : "Raw JSON"}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </motion.div>
             )}

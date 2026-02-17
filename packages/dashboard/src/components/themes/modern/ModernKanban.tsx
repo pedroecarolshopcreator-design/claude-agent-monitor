@@ -2,6 +2,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useProjectStore } from '../../../stores/project-store';
 import { KANBAN_COLUMNS } from '../../../stores/kanban-store';
 import { useTasks } from '../../../hooks/use-tasks';
+import { useResolveAgentName } from '../../../hooks/use-resolve-agent-name';
 import {
   getPriorityColor,
   getTaskStatusColor,
@@ -100,8 +101,10 @@ export function ModernKanban() {
 
 function KanbanCard({ task }: { task: PRDTask }) {
   const { selectTask, selectedTaskId } = useProjectStore();
+  const resolveAgentName = useResolveAgentName();
   const priorityStyle = getPriorityColor(task.priority);
   const agentColor = task.assignedAgent ? generateIdenticon(task.assignedAgent) : null;
+  const agentDisplayName = task.assignedAgent ? resolveAgentName(task.assignedAgent) : null;
 
   return (
     <div
@@ -134,9 +137,9 @@ function KanbanCard({ task }: { task: PRDTask }) {
               className="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold"
               style={{ backgroundColor: `${agentColor}20`, color: agentColor }}
             >
-              {task.assignedAgent.charAt(0).toUpperCase()}
+              {(agentDisplayName ?? '?').charAt(0).toUpperCase()}
             </div>
-            <span className="text-[9px] text-cam-text-muted">{task.assignedAgent}</span>
+            <span className="text-[9px] text-cam-text-muted">{agentDisplayName}</span>
           </div>
         ) : (
           <span className="text-[9px] text-cam-text-muted italic">Unassigned</span>

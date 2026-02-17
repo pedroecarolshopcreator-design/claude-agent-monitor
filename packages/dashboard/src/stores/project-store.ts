@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Project, Sprint, PRDTask } from '@cam/shared';
 
-export type ViewMode = 'map' | 'monitor' | 'tracker' | 'mission-control';
+export type ViewMode = 'agents' | 'tracker';
 
 interface ProjectState {
   projects: Project[];
@@ -30,7 +30,7 @@ export const useProjectStore = create<ProjectState>((set) => ({
   activeSprint: null,
   sprints: [],
   tasks: [],
-  viewMode: 'map',
+  viewMode: 'agents',
   selectedTaskId: null,
 
   setProjects: (projects) => set({ projects }),

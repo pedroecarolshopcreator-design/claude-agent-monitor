@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useProjectStore } from '../../stores/project-store';
+import { useResolveAgentName } from '../../hooks/use-resolve-agent-name';
 import { getTaskActivity } from '../../lib/api';
 import {
   getPriorityColor,
@@ -28,6 +29,7 @@ interface TaskActivity {
 
 export function TaskDetailPanel() {
   const { selectedTaskId, tasks, selectTask, sprints, activeProject } = useProjectStore();
+  const resolveAgentName = useResolveAgentName();
   const [activeTab, setActiveTab] = useState<TabId>('overview');
   const [activities, setActivities] = useState<TaskActivity[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(false);
@@ -109,23 +111,26 @@ export function TaskDetailPanel() {
               <div className="text-[10px] text-cam-text font-medium truncate">{task.prdSection}</div>
             </div>
           )}
-          {task.assignedAgent && (
-            <div className="bg-cam-surface-2 rounded-md px-2 py-1.5">
-              <div className="text-[9px] text-cam-text-muted">Agent</div>
-              <div className="flex items-center gap-1 mt-0.5">
-                <div
-                  className="w-3 h-3 rounded-full flex items-center justify-center text-[7px] font-bold"
-                  style={{
-                    backgroundColor: `${generateIdenticon(task.assignedAgent)}20`,
-                    color: generateIdenticon(task.assignedAgent),
-                  }}
-                >
-                  {task.assignedAgent.charAt(0).toUpperCase()}
+          {task.assignedAgent && (() => {
+            const agentName = resolveAgentName(task.assignedAgent);
+            return (
+              <div className="bg-cam-surface-2 rounded-md px-2 py-1.5">
+                <div className="text-[9px] text-cam-text-muted">Agent</div>
+                <div className="flex items-center gap-1 mt-0.5">
+                  <div
+                    className="w-3 h-3 rounded-full flex items-center justify-center text-[7px] font-bold"
+                    style={{
+                      backgroundColor: `${generateIdenticon(task.assignedAgent)}20`,
+                      color: generateIdenticon(task.assignedAgent),
+                    }}
+                  >
+                    {agentName.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-[10px] text-cam-text font-medium">{agentName}</span>
                 </div>
-                <span className="text-[10px] text-cam-text font-medium">{task.assignedAgent}</span>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       </div>
 
@@ -165,10 +170,11 @@ export function TaskDetailPanel() {
             blockedBy={blockedByTasks}
             blocks={blocksTasks}
             onSelectTask={selectTask}
+            resolveAgentName={resolveAgentName}
           />
         )}
         {activeTab === 'activity' && (
-          <ActivityTab activities={activities} loading={loadingActivities} />
+          <ActivityTab activities={activities} loading={loadingActivities} resolveAgentName={resolveAgentName} />
         )}
       </div>
     </div>
@@ -261,11 +267,13 @@ function DependenciesTab({
   blockedBy,
   blocks,
   onSelectTask,
+  resolveAgentName,
 }: {
   dependsOn: PRDTask[];
   blockedBy: PRDTask[];
   blocks: PRDTask[];
   onSelectTask: (id: string) => void;
+  resolveAgentName: (agentId: string) => string;
 }) {
   if (dependsOn.length === 0 && blockedBy.length === 0 && blocks.length === 0) {
     return (
@@ -281,6 +289,7 @@ function DependenciesTab({
           tasks={blockedBy}
           color="text-red-400"
           onSelect={onSelectTask}
+          resolveAgentName={resolveAgentName}
         />
       )}
       {dependsOn.length > 0 && (
@@ -289,6 +298,7 @@ function DependenciesTab({
           tasks={dependsOn}
           color="text-yellow-400"
           onSelect={onSelectTask}
+          resolveAgentName={resolveAgentName}
         />
       )}
       {blocks.length > 0 && (
@@ -297,6 +307,7 @@ function DependenciesTab({
           tasks={blocks}
           color="text-blue-400"
           onSelect={onSelectTask}
+          resolveAgentName={resolveAgentName}
         />
       )}
     </div>
@@ -308,11 +319,13 @@ function DepSection({
   tasks,
   color,
   onSelect,
+  resolveAgentName,
 }: {
   title: string;
   tasks: PRDTask[];
   color: string;
   onSelect: (id: string) => void;
+  resolveAgentName: (agentId: string) => string;
 }) {
   return (
     <div>
@@ -337,7 +350,7 @@ function DepSection({
                 {t.status.replace(/_/g, ' ')}
               </span>
               {t.assignedAgent && (
-                <span className="text-[9px] text-cam-text-muted">@{t.assignedAgent}</span>
+                <span className="text-[9px] text-cam-text-muted">@{resolveAgentName(t.assignedAgent)}</span>
               )}
             </div>
           </button>
@@ -364,9 +377,11 @@ function getTaskStatusDot(status: string): string {
 function ActivityTab({
   activities,
   loading,
+  resolveAgentName,
 }: {
   activities: TaskActivity[];
   loading: boolean;
+  resolveAgentName: (agentId: string) => string;
 }) {
   if (loading) {
     return (
@@ -395,7 +410,7 @@ function ActivityTab({
             </span>
           </div>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-[9px] text-cam-text-muted">@{activity.agentId}</span>
+            <span className="text-[9px] text-cam-text-muted">@{resolveAgentName(activity.agentId)}</span>
           </div>
           {activity.details && (
             <p className="text-[10px] text-cam-text-secondary mt-0.5">{activity.details}</p>

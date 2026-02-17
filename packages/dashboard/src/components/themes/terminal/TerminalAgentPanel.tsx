@@ -1,3 +1,4 @@
+import { useState, useMemo } from "react";
 import { useSessionStore } from "../../../stores/session-store";
 import { useAgents } from "../../../hooks/use-agents";
 import { formatRelativeTime } from "../../../lib/formatters";
@@ -20,9 +21,27 @@ const STATUS_COLORS: Record<string, string> = {
   shutdown: "text-[#006600]",
 };
 
+function isActiveAgent(agent: Agent): boolean {
+  return agent.status === 'active';
+}
+
 export function TerminalAgentPanel() {
   const agents = useAgents();
   const { selectedAgentId, selectAgent } = useSessionStore();
+  const [showInactive, setShowInactive] = useState(false);
+
+  const { activeAgents, inactiveAgents } = useMemo(() => {
+    const active: Agent[] = [];
+    const inactive: Agent[] = [];
+    for (const agent of agents) {
+      if (isActiveAgent(agent)) {
+        active.push(agent);
+      } else {
+        inactive.push(agent);
+      }
+    }
+    return { activeAgents: active, inactiveAgents: inactive };
+  }, [agents]);
 
   if (agents.length === 0) {
     return (
@@ -38,23 +57,66 @@ export function TerminalAgentPanel() {
 
   return (
     <div className="p-2 font-mono text-[11px]">
+      {/* Active Agents */}
       <div className="terminal-muted mb-1 px-1">
-        {"## AGENTS (" + agents.length + ") ##"}
+        {"## ACTIVE (" + activeAgents.length + ") ##"}
       </div>
       <div className="border-t border-[#1a3a1a] mb-1" />
 
-      <div className="space-y-0.5">
-        {agents.map((agent) => (
-          <AgentRow
-            key={agent.id}
-            agent={agent}
-            isSelected={selectedAgentId === agent.id}
-            onSelect={() =>
-              selectAgent(selectedAgentId === agent.id ? null : agent.id)
-            }
-          />
-        ))}
-      </div>
+      {activeAgents.length > 0 ? (
+        <div className="space-y-0.5">
+          {activeAgents.map((agent) => (
+            <AgentRow
+              key={agent.id}
+              agent={agent}
+              isSelected={selectedAgentId === agent.id}
+              onSelect={() =>
+                selectAgent(selectedAgentId === agent.id ? null : agent.id)
+              }
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="px-1 py-1 terminal-dim">
+          {"> No active agents"}
+        </div>
+      )}
+
+      {/* Inactive Agents - Collapsible */}
+      {inactiveAgents.length > 0 && (
+        <div className="mt-2">
+          <button
+            onClick={() => setShowInactive(!showInactive)}
+            className="w-full text-left px-1 py-0.5 hover:bg-[#0a1a0a] transition-colors"
+          >
+            <span className="terminal-dim">
+              {showInactive ? "[-]" : "[+]"}{" "}
+            </span>
+            <span className="terminal-muted">
+              {"INACTIVE (" + inactiveAgents.length + ")"}
+            </span>
+          </button>
+
+          {showInactive && (
+            <>
+              <div className="border-t border-[#1a3a1a] mb-1 mt-1" />
+              <div className="space-y-0.5">
+                {inactiveAgents.map((agent) => (
+                  <AgentRow
+                    key={agent.id}
+                    agent={agent}
+                    isSelected={selectedAgentId === agent.id}
+                    onSelect={() =>
+                      selectAgent(selectedAgentId === agent.id ? null : agent.id)
+                    }
+                    compact
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -63,14 +125,41 @@ function AgentRow({
   agent,
   isSelected,
   onSelect,
+  compact = false,
 }: {
   agent: Agent;
   isSelected: boolean;
   onSelect: () => void;
+  compact?: boolean;
 }) {
   const displayName = getAgentDisplayName(agent.id, agent.name);
   const statusChar = STATUS_CHARS[agent.status] || "[ ]";
   const statusColor = STATUS_COLORS[agent.status] || "terminal-dim";
+
+  if (compact) {
+    // Compact single-line view for inactive agents
+    return (
+      <button
+        onClick={onSelect}
+        title={`${agent.name} (${agent.id})`}
+        className={`
+          w-full text-left px-1 py-0.5 font-mono text-[10px] transition-colors
+          ${
+            isSelected
+              ? "bg-[#0a1f0a] border-l-2 border-[#00ff00]"
+              : "hover:bg-[#0d1a0d] border-l-2 border-transparent"
+          }
+        `}
+      >
+        <div className="flex items-center gap-1">
+          <span className={`${statusColor} shrink-0`}>{statusChar}</span>
+          <span className="terminal-dim truncate flex-1">{displayName}</span>
+          <span className="terminal-dim shrink-0">c:{agent.toolCallCount}</span>
+          <span className="terminal-dim shrink-0">{formatRelativeTime(agent.lastActivityAt)}</span>
+        </div>
+      </button>
+    );
+  }
 
   return (
     <button

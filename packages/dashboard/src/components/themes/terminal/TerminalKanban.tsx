@@ -1,6 +1,7 @@
 import { useProjectStore } from '../../../stores/project-store';
 import { KANBAN_COLUMNS } from '../../../stores/kanban-store';
 import { useTasks } from '../../../hooks/use-tasks';
+import { useResolveAgentName } from '../../../hooks/use-resolve-agent-name';
 import type { PRDTask, PRDTaskStatus } from '@cam/shared';
 
 const COLUMN_CHARS: Record<string, string> = {
@@ -96,6 +97,7 @@ export function TerminalKanban() {
 
 function KanbanCard({ task }: { task: PRDTask }) {
   const { selectTask, selectedTaskId } = useProjectStore();
+  const resolveAgentName = useResolveAgentName();
   const priChar = PRIORITY_CHARS[task.priority] || '   ';
 
   return (
@@ -121,7 +123,7 @@ function KanbanCard({ task }: { task: PRDTask }) {
       {/* Footer */}
       <div className="flex items-center justify-between terminal-dim">
         {task.assignedAgent ? (
-          <span>@{task.assignedAgent}</span>
+          <span>@{resolveAgentName(task.assignedAgent)}</span>
         ) : (
           <span className="italic">unassigned</span>
         )}

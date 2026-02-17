@@ -1,10 +1,9 @@
-import { useProjectStore, type ViewMode } from "../../../stores/project-store";
+import { useProjectStore } from "../../../stores/project-store";
 import { useSessionStore } from "../../../stores/session-store";
 import { TerminalStatsBar } from "./TerminalStatsBar";
 import { TerminalAgentPanel } from "./TerminalAgentPanel";
 import { TerminalActivityFeed } from "./TerminalActivityFeed";
 import { TerminalAgentDetail } from "./TerminalAgentDetail";
-import { TerminalTimeline } from "./TerminalTimeline";
 import { TerminalFileWatcher } from "./TerminalFileWatcher";
 import { TerminalKanban } from "./TerminalKanban";
 import { TerminalSprintProgress } from "./TerminalSprintProgress";
@@ -13,10 +12,9 @@ import { TerminalPRDOverview } from "./TerminalPRDOverview";
 import { TerminalDependencyGraph } from "./TerminalDependencyGraph";
 import { TerminalProjectSelector } from "./TerminalProjectSelector";
 import { SessionPicker } from "../../shared/SessionPicker";
-import { useUIStore } from "../../../stores/ui-store.js";
-import { useSettingsStore } from "../../../stores/settings-store.js";
 import { AgentMap } from "../../agent-map/AgentMap";
 import { TaskDetailPanel } from "../../shared/TaskDetailPanel";
+import { AgentRightPanel } from "../../shared/AgentRightPanel.js";
 import "./terminal.css";
 
 function TerminalConnectionIndicator() {
@@ -76,7 +74,6 @@ export function TerminalShell() {
         <div className="flex items-center gap-3">
           <SessionPicker />
           <TerminalProjectSelector />
-          <TerminalGearButton />
         </div>
       </header>
 
@@ -85,41 +82,14 @@ export function TerminalShell() {
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
-        {viewMode === "map" && <MapLayout />}
-        {viewMode === "monitor" && <MonitorLayout />}
+        {viewMode === "agents" && <AgentsLayout />}
         {viewMode === "tracker" && <TrackerLayout />}
-        {viewMode === "mission-control" && <MissionControlLayout />}
       </div>
-
-      {/* Bottom Timeline (conditional) */}
-      <TerminalConditionalTimeline />
     </div>
   );
 }
 
-function TerminalGearButton() {
-  const openSettings = useUIStore((s) => s.openSettings);
-
-  return (
-    <button
-      onClick={openSettings}
-      className="font-mono text-[11px] terminal-muted hover:text-[#00ff00] hover:terminal-glow transition-colors"
-      title="Configurações (Ctrl+,)"
-    >
-      [CONFIG]
-    </button>
-  );
-}
-
-function TerminalConditionalTimeline() {
-  const showTimeline = useSettingsStore((s) => s.showTimeline);
-  if (!showTimeline) return null;
-  return <TerminalTimeline />;
-}
-
-function MapLayout() {
-  const { selectedAgentId } = useSessionStore();
-
+function AgentsLayout() {
   return (
     <>
       {/* Left Sidebar - Agent Panel */}
@@ -132,32 +102,16 @@ function MapLayout() {
         <AgentMap />
       </main>
 
-      {/* Right Panel - Activity Feed or Agent Detail */}
-      <aside className="w-72 border-l border-[#1a3a1a] overflow-y-auto terminal-scrollbar shrink-0">
-        {selectedAgentId ? <TerminalAgentDetail /> : <TerminalActivityFeed />}
-      </aside>
-    </>
-  );
-}
-
-function MonitorLayout() {
-  const { selectedAgentId } = useSessionStore();
-
-  return (
-    <>
-      {/* Left Sidebar - Agent Panel */}
-      <aside className="w-56 border-r border-[#1a3a1a] overflow-y-auto terminal-scrollbar shrink-0">
-        <TerminalAgentPanel />
-      </aside>
-
-      {/* Center - Activity Feed */}
-      <main className="flex-1 overflow-hidden flex flex-col">
-        <TerminalActivityFeed />
-      </main>
-
-      {/* Right Panel - Agent Detail or File Watcher */}
-      <aside className="w-72 border-l border-[#1a3a1a] overflow-y-auto terminal-scrollbar shrink-0">
-        {selectedAgentId ? <TerminalAgentDetail /> : <TerminalFileWatcher />}
+      {/* Right Panel - Activity Feed / FileWatcher or Agent Detail */}
+      <aside className="w-72 border-l border-[#1a3a1a] terminal-scrollbar shrink-0">
+        <AgentRightPanel
+          AgentDetail={TerminalAgentDetail}
+          ActivityFeed={TerminalActivityFeed}
+          FileWatcher={TerminalFileWatcher}
+          tabBarClass="flex border-b border-[#1a3a1a] bg-[#0d0d0d]"
+          activeTabClass="text-[#00ff00] terminal-glow border-b-2 border-[#00ff00]"
+          inactiveTabClass="text-[#00aa00]/60 hover:text-[#00aa00]"
+        />
       </aside>
     </>
   );
@@ -192,49 +146,6 @@ function TrackerLayout() {
       {/* Bottom - PRD Overview */}
       <div className="h-48 border-t border-[#1a3a1a] overflow-y-auto terminal-scrollbar shrink-0">
         <TerminalPRDOverview />
-      </div>
-    </div>
-  );
-}
-
-function MissionControlLayout() {
-  const { selectedAgentId } = useSessionStore();
-  const { selectedTaskId } = useProjectStore();
-
-  return (
-    <div className="flex-1 flex overflow-hidden">
-      {/* Left - Agent Monitor */}
-      <div className="w-1/2 flex border-r border-[#1a3a1a] overflow-hidden">
-        <aside className="w-48 border-r border-[#1a3a1a] overflow-y-auto terminal-scrollbar shrink-0">
-          <TerminalAgentPanel />
-        </aside>
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-hidden">
-            <TerminalActivityFeed />
-          </div>
-        </div>
-      </div>
-
-      {/* Right - PRD Tracker */}
-      <div className="w-1/2 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-hidden flex">
-          <main className="flex-1 overflow-hidden">
-            <TerminalKanban />
-          </main>
-          {selectedTaskId && (
-            <aside className="w-80 border-l border-[#1a3a1a] overflow-y-auto terminal-scrollbar shrink-0">
-              <TaskDetailPanel />
-            </aside>
-          )}
-        </div>
-        <div className="h-32 border-t border-[#1a3a1a] flex shrink-0">
-          <div className="flex-1">
-            <TerminalSprintProgress />
-          </div>
-          <div className="w-64 border-l border-[#1a3a1a]">
-            <TerminalBurndown />
-          </div>
-        </div>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useProjectStore } from '../../../stores/project-store';
 import { KANBAN_COLUMNS } from '../../../stores/kanban-store';
 import { useTasks } from '../../../hooks/use-tasks';
+import { useResolveAgentName } from '../../../hooks/use-resolve-agent-name';
 import { getPriorityColor, generateIdenticon } from '../../../lib/formatters';
 import type { PRDTask, PRDTaskStatus } from '@cam/shared';
 
@@ -101,8 +102,10 @@ export function PixelKanban() {
 
 function QuestCard({ task }: { task: PRDTask }) {
   const { selectTask, selectedTaskId } = useProjectStore();
+  const resolveAgentName = useResolveAgentName();
   const difficulty = DIFFICULTY[task.priority] || DIFFICULTY.low;
   const agentColor = task.assignedAgent ? generateIdenticon(task.assignedAgent) : null;
+  const agentDisplayName = task.assignedAgent ? resolveAgentName(task.assignedAgent) : null;
   const isCompleted = task.status === 'completed';
 
   return (
@@ -159,10 +162,10 @@ function QuestCard({ task }: { task: PRDTask }) {
                 border: '1px solid var(--pixel-border)',
               }}
             >
-              {task.assignedAgent.charAt(0).toUpperCase()}
+              {(agentDisplayName ?? '?').charAt(0).toUpperCase()}
             </div>
             <span className="pixel-text-xs" style={{ color: 'var(--pixel-text-dim)' }}>
-              {task.assignedAgent.slice(0, 8)}
+              {agentDisplayName}
             </span>
           </div>
         ) : (

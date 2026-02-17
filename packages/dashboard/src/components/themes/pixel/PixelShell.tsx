@@ -1,10 +1,9 @@
-import { useProjectStore, type ViewMode } from "../../../stores/project-store";
+import { useProjectStore } from "../../../stores/project-store";
 import { useSessionStore } from "../../../stores/session-store";
 import { PixelStatsBar } from "./PixelStatsBar";
 import { PixelAgentPanel } from "./PixelAgentPanel";
 import { PixelActivityFeed } from "./PixelActivityFeed";
 import { PixelAgentDetail } from "./PixelAgentDetail";
-import { PixelTimeline } from "./PixelTimeline";
 import { PixelFileWatcher } from "./PixelFileWatcher";
 import { PixelKanban } from "./PixelKanban";
 import { PixelSprintProgress } from "./PixelSprintProgress";
@@ -13,10 +12,9 @@ import { PixelPRDOverview } from "./PixelPRDOverview";
 import { PixelDependencyGraph } from "./PixelDependencyGraph";
 import { PixelProjectSelector } from "./PixelProjectSelector";
 import { SessionPicker } from "../../shared/SessionPicker";
-import { useUIStore } from "../../../stores/ui-store.js";
-import { useSettingsStore } from "../../../stores/settings-store.js";
 import { AgentMap } from "../../agent-map/AgentMap";
 import { TaskDetailPanel } from "../../shared/TaskDetailPanel";
+import { AgentRightPanel } from "../../shared/AgentRightPanel.js";
 import "./pixel.css";
 
 function PixelConnectionIndicator() {
@@ -85,7 +83,6 @@ export function PixelShell() {
         <div className="flex items-center gap-3">
           <SessionPicker />
           <PixelProjectSelector />
-          <PixelGearButton />
         </div>
       </header>
 
@@ -94,53 +91,14 @@ export function PixelShell() {
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden">
-        {viewMode === "map" && <MapLayout />}
-        {viewMode === "monitor" && <MonitorLayout />}
+        {viewMode === "agents" && <AgentsLayout />}
         {viewMode === "tracker" && <TrackerLayout />}
-        {viewMode === "mission-control" && <MissionControlLayout />}
       </div>
-
-      {/* Bottom Timeline (conditional) */}
-      <PixelConditionalTimeline />
     </div>
   );
 }
 
-function PixelGearButton() {
-  const openSettings = useUIStore((s) => s.openSettings);
-
-  return (
-    <button
-      onClick={openSettings}
-      className="pixel-text-xs px-2 py-1 transition-colors"
-      style={{
-        color: 'var(--pixel-text-muted)',
-        border: '2px solid var(--pixel-border)',
-      }}
-      title="Configurações (Ctrl+,)"
-      onMouseEnter={(e) => {
-        (e.target as HTMLElement).style.color = 'var(--pixel-gold)';
-        (e.target as HTMLElement).style.borderColor = 'var(--pixel-gold)';
-      }}
-      onMouseLeave={(e) => {
-        (e.target as HTMLElement).style.color = 'var(--pixel-text-muted)';
-        (e.target as HTMLElement).style.borderColor = 'var(--pixel-border)';
-      }}
-    >
-      [CFG]
-    </button>
-  );
-}
-
-function PixelConditionalTimeline() {
-  const showTimeline = useSettingsStore((s) => s.showTimeline);
-  if (!showTimeline) return null;
-  return <PixelTimeline />;
-}
-
-function MapLayout() {
-  const { selectedAgentId } = useSessionStore();
-
+function AgentsLayout() {
   return (
     <>
       {/* Left Sidebar - Party Panel */}
@@ -156,41 +114,20 @@ function MapLayout() {
         <AgentMap />
       </main>
 
-      {/* Right Panel - Battle Log or Character Sheet */}
+      {/* Right Panel - Battle Log / File Watch or Character Sheet */}
       <aside
-        className="w-72 overflow-y-auto pixel-scrollbar shrink-0"
+        className="w-72 pixel-scrollbar shrink-0"
         style={{ borderLeft: "3px solid var(--pixel-border)" }}
       >
-        {selectedAgentId ? <PixelAgentDetail /> : <PixelActivityFeed />}
-      </aside>
-    </>
-  );
-}
-
-function MonitorLayout() {
-  const { selectedAgentId } = useSessionStore();
-
-  return (
-    <>
-      {/* Left Sidebar - Party Panel */}
-      <aside
-        className="w-60 overflow-y-auto pixel-scrollbar shrink-0"
-        style={{ borderRight: "3px solid var(--pixel-border)" }}
-      >
-        <PixelAgentPanel />
-      </aside>
-
-      {/* Center - Battle Log */}
-      <main className="flex-1 overflow-hidden flex flex-col">
-        <PixelActivityFeed />
-      </main>
-
-      {/* Right Panel - Character Sheet or Inventory */}
-      <aside
-        className="w-72 overflow-y-auto pixel-scrollbar shrink-0"
-        style={{ borderLeft: "3px solid var(--pixel-border)" }}
-      >
-        {selectedAgentId ? <PixelAgentDetail /> : <PixelFileWatcher />}
+        <AgentRightPanel
+          AgentDetail={PixelAgentDetail}
+          ActivityFeed={PixelActivityFeed}
+          FileWatcher={PixelFileWatcher}
+          tabBarClass="flex border-b-[3px] border-[var(--pixel-border)] bg-[var(--pixel-surface)]"
+          activeTabClass="text-[var(--pixel-gold)]"
+          inactiveTabClass="text-[var(--pixel-text-muted)] hover:text-[var(--pixel-text)]"
+          panelClass="flex-1 overflow-y-auto pixel-scrollbar"
+        />
       </aside>
     </>
   );
@@ -234,64 +171,6 @@ function TrackerLayout() {
         style={{ borderTop: "3px solid var(--pixel-border)" }}
       >
         <PixelPRDOverview />
-      </div>
-    </div>
-  );
-}
-
-function MissionControlLayout() {
-  const { selectedAgentId } = useSessionStore();
-  const { selectedTaskId } = useProjectStore();
-
-  return (
-    <div className="flex-1 flex overflow-hidden">
-      {/* Left - Party Monitor */}
-      <div
-        className="w-1/2 flex overflow-hidden"
-        style={{ borderRight: "3px solid var(--pixel-border)" }}
-      >
-        <aside
-          className="w-48 overflow-y-auto pixel-scrollbar shrink-0"
-          style={{ borderRight: "3px solid var(--pixel-border)" }}
-        >
-          <PixelAgentPanel />
-        </aside>
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-hidden">
-            <PixelActivityFeed />
-          </div>
-        </div>
-      </div>
-
-      {/* Right - Quest Board */}
-      <div className="w-1/2 flex flex-col overflow-hidden">
-        <div className="flex-1 overflow-hidden flex">
-          <main className="flex-1 overflow-hidden">
-            <PixelKanban />
-          </main>
-          {selectedTaskId && (
-            <aside
-              className="w-80 overflow-y-auto pixel-scrollbar shrink-0"
-              style={{ borderLeft: "3px solid var(--pixel-border)" }}
-            >
-              <TaskDetailPanel />
-            </aside>
-          )}
-        </div>
-        <div
-          className="h-32 flex shrink-0"
-          style={{ borderTop: "3px solid var(--pixel-border)" }}
-        >
-          <div className="flex-1">
-            <PixelSprintProgress />
-          </div>
-          <div
-            className="w-64"
-            style={{ borderLeft: "3px solid var(--pixel-border)" }}
-          >
-            <PixelBurndown />
-          </div>
-        </div>
       </div>
     </div>
   );
