@@ -137,7 +137,7 @@ cam sprint import docs/SPRINTS/sprint-01.md
 - **Sprint file import** -- Create markdown sprint files with tasks, import them with `cam sprint sync` or `cam sprint import`
 - **Auto-updating Kanban** -- Tasks move between columns on their own as agents call TaskCreate and TaskUpdate
 - **Sprint progress** -- Live progress bars, completion percentages, and velocity metrics for the active sprint
-- **Correlation Engine v2** -- 5-layer scoring pipeline that automatically matches agent events to tasks (exact ID, tag similarity, file domain, title similarity, keyword overlap)
+- **Correlation Engine** -- Explicit-first matching that links TaskCreate/TaskUpdate/TaskList events to sprint tasks via exact ID or title similarity. General tool events (Write, Edit, Bash) are intentionally not correlated to avoid noise
 - **Burndown chart** -- Classic burndown with ideal vs actual lines, scope changes, and time-based projections
 - **Multi-project support** -- Monitor multiple projects from a single CAM dashboard with project sidebar and switcher
 

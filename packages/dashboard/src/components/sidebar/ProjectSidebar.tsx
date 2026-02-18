@@ -426,8 +426,8 @@ export function ProjectSidebar({
       </div>
       <ConfirmModal
         open={deleteTarget !== null}
-        title="Remover projeto"
-        message={`Tem certeza que deseja remover "${deleteTarget?.name ?? ''}"? Todos os sprints e tasks associados serao removidos. Esta acao nao pode ser desfeita.`}
+        title="Delete project"
+        message={`Are you sure you want to delete "${deleteTarget?.name ?? ''}"? All sprints and tasks will be permanently removed. This action cannot be undone.`}
         onConfirm={handleDeleteProject}
         onCancel={() => setDeleteTarget(null)}
       />
@@ -561,7 +561,7 @@ function ProjectItem({
           onClick={(e) => { e.stopPropagation(); onDelete(project); }}
           className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 hover:opacity-100 transition-opacity"
           style={{ color: '#aa0000', fontSize: '10px', cursor: 'pointer' }}
-          title="Remover projeto"
+          title="Delete project"
         >[DEL]</span>
       </button>
     );
@@ -659,7 +659,7 @@ function ProjectItem({
           onClick={(e) => { e.stopPropagation(); onDelete(project); }}
           className="absolute right-1 top-1 opacity-0 hover:opacity-100 transition-opacity"
           style={{ fontSize: '6px', color: '#ff4444', cursor: 'pointer', fontFamily: "'Press Start 2P', monospace" }}
-          title="Remover projeto"
+          title="Delete project"
         >X</span>
       </button>
     );
@@ -727,7 +727,7 @@ function ProjectItem({
           onDelete(project);
         }}
         className="absolute top-1.5 right-1.5 p-1 rounded-md text-cam-text-muted hover:text-red-500 hover:bg-red-500/10 opacity-0 group-hover:opacity-100 transition-all"
-        title="Remover projeto"
+        title="Delete project"
       >
         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
