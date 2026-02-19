@@ -20,6 +20,7 @@ import {
   isCamHook,
   type HookEntry,
 } from "../utils/hooks-config.js";
+import { scaffoldDocs } from "../utils/scaffold-docs.js";
 
 export const startCommand = new Command("start")
   .description("Start the Claude Agent Monitor server and dashboard")
@@ -255,6 +256,7 @@ async function waitForServer(
 
 function autoInitHooks(): void {
   const camHooks = generateHooksConfig();
+  let hooksConfigured = false;
 
   if (claudeSettingsExist()) {
     // Check if CAM hooks are already configured
@@ -264,20 +266,30 @@ function autoInitHooks(): void {
       entries.some((e) => isCamHook(e)),
     );
 
-    if (hasCamHooks) {
-      return; // Already initialized
+    if (!hasCamHooks) {
+      // Merge CAM hooks into existing settings
+      const merged = mergeHooks(settings, camHooks);
+      writeClaudeSettings(merged);
+      logger.success("CAM hooks auto-configured (merged with existing settings)");
+      hooksConfigured = true;
     }
-
-    // Merge CAM hooks into existing settings
-    const merged = mergeHooks(settings, camHooks);
-    writeClaudeSettings(merged);
-    logger.success("CAM hooks auto-configured (merged with existing settings)");
-    logger.blank();
   } else {
     // Create new settings with hooks
     ensureClaudeDir();
     writeClaudeSettings({ hooks: camHooks });
     logger.success("CAM hooks auto-configured (.claude/settings.json created)");
+    hooksConfigured = true;
+  }
+
+  // Scaffold docs structure (PRD + Sprint templates)
+  const docsResult = scaffoldDocs();
+  if (docsResult.created.length > 0) {
+    for (const path of docsResult.created) {
+      logger.success(`Created ${chalk.cyan(path)}`);
+    }
+  }
+
+  if (hooksConfigured || docsResult.created.length > 0) {
     logger.blank();
   }
 }
