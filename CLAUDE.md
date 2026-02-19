@@ -5,7 +5,7 @@ Mission Control for Claude Code agents: real-time observability + visual PRD/Spr
 ## Commands
 
 ```bash
-pnpm dev          # Start all packages in dev mode (server:7890, dashboard:7891)
+pnpm dev          # Start all packages in dev mode (server:7860, dashboard:7861)
 pnpm build        # Build all packages
 pnpm typecheck    # Type-check all packages
 pnpm lint         # Lint all packages

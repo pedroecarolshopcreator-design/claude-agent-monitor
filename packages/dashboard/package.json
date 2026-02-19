@@ -1,6 +1,6 @@
 {
   "name": "@claudecam/dashboard",
-  "version": "0.1.3",
+  "version": "0.1.7",
   "description": "React dashboard for Claude Agent Monitor",
   "license": "MIT",
   "type": "module",
@@ -12,7 +12,9 @@
     "clean": "rm -rf dist",
     "prepack": "pnpm run build"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "dependencies": {
     "@claudecam/shared": "workspace:*",
     "@react-three/drei": "^10.7.7",

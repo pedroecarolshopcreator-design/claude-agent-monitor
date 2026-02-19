@@ -9,6 +9,9 @@ import { DEFAULT_SERVER_PORT, DEFAULT_HOST } from "@claudecam/shared";
  */
 const DEBUG = process.env["CAM_DEBUG"] === "1";
 
+/** Resolve the server port: CAM_PORT env var or default (7890). */
+const SERVER_PORT = parseInt(process.env["CAM_PORT"] || "", 10) || DEFAULT_SERVER_PORT;
+
 /** Timeout per individual HTTP request (ms). */
 const REQUEST_TIMEOUT_MS = 2000;
 
@@ -119,7 +122,7 @@ function doPost(hostname: string, body: string): Promise<boolean> {
     const req = request(
       {
         hostname,
-        port: DEFAULT_SERVER_PORT,
+        port: SERVER_PORT,
         path: "/api/events",
         method: "POST",
         headers: {
@@ -195,7 +198,7 @@ export function sendEvent(payload: Record<string, unknown>): void {
       }
 
       debugLog(
-        `POST to ${hostname}:${DEFAULT_SERVER_PORT} (attempt ${attempt + 1}/${MAX_ATTEMPTS})`,
+        `POST to ${hostname}:${SERVER_PORT} (attempt ${attempt + 1}/${MAX_ATTEMPTS})`,
       );
 
       const success = await doPost(hostname, body);

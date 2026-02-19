@@ -1,6 +1,6 @@
 {
   "name": "@claudecam/server",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Backend server for Claude Agent Monitor - Express + SQLite + REST API + SSE",
   "license": "MIT",
   "type": "module",
@@ -12,10 +12,12 @@
       "types": "./dist/index.d.ts"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc && node -e \"const fs=require('fs');const p=require('path');fs.mkdirSync(p.join('dist','db'),{recursive:true});fs.copyFileSync(p.join('src','db','schema.sql'),p.join('dist','db','schema.sql'));\"",
-    "dev": "tsx watch src/index.ts",
+    "dev": "cross-env CAM_PORT=7860 tsx watch src/index.ts",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist",
@@ -34,6 +36,7 @@
     "@types/express": "^5.0.0",
     "@types/express-serve-static-core": "^5.0.0",
     "@types/uuid": "^10.0.0",
+    "cross-env": "^10.1.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   },
@@ -44,7 +47,13 @@
   },
   "homepage": "https://github.com/pedropauloai/claude-agent-monitor",
   "bugs": "https://github.com/pedropauloai/claude-agent-monitor/issues",
-  "keywords": ["claude", "agent", "monitor", "observability", "claude-code"],
+  "keywords": [
+    "claude",
+    "agent",
+    "monitor",
+    "observability",
+    "claude-code"
+  ],
   "author": "CAM Contributors",
   "publishConfig": {
     "access": "public"

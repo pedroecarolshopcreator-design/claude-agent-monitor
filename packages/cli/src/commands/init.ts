@@ -24,8 +24,10 @@ import { scaffoldDocs } from "../utils/scaffold-docs.js";
 export const initCommand = new Command("init")
   .description("Initialize Claude Agent Monitor hooks in the current project")
   .option("--force", "Overwrite existing hooks configuration")
+  .option("-p, --port <port>", "Server port (hooks will send events to this port)", String(DEFAULT_SERVER_PORT))
   .action(
-    async (options: { force?: boolean }) => {
+    async (options: { force?: boolean; port: string }) => {
+      const serverPort = parseInt(options.port, 10) || DEFAULT_SERVER_PORT;
       logger.blank();
       logger.section("Claude Agent Monitor - Initializing...");
       logger.blank();
@@ -43,7 +45,7 @@ export const initCommand = new Command("init")
       }
 
       const settingsExist = claudeSettingsExist();
-      const camHooks = generateHooksConfig();
+      const camHooks = generateHooksConfig(serverPort);
       const hookCount = Object.keys(HOOK_TYPE_DESCRIPTIONS).length;
 
       if (settingsExist && !options.force) {
@@ -119,7 +121,7 @@ export const initCommand = new Command("init")
       // Check if server is running
       try {
         const healthRes = await fetch(
-          `http://localhost:${DEFAULT_SERVER_PORT}/api/health`,
+          `http://localhost:${serverPort}/api/health`,
         );
         serverAvailable = healthRes.ok;
       } catch {
@@ -135,16 +137,15 @@ export const initCommand = new Command("init")
         try {
           const cwd = process.cwd();
           const lookupRes = await fetch(
-            `http://localhost:${DEFAULT_SERVER_PORT}/api/registry/lookup?dir=${encodeURIComponent(cwd)}`,
+            `http://localhost:${serverPort}/api/registry/lookup?dir=${encodeURIComponent(cwd)}`,
           );
           if (lookupRes.ok) {
             const lookupData = (await lookupRes.json()) as {
-              project_id?: string;
-              project?: { id: string; name: string };
+              registry?: { project_id?: string; project_name?: string };
             };
-            if (lookupData.project_id) {
-              projectId = lookupData.project_id;
-              const name = lookupData.project?.name ?? projectId.slice(0, 8);
+            if (lookupData.registry?.project_id) {
+              projectId = lookupData.registry.project_id;
+              const name = lookupData.registry.project_name ?? projectId.slice(0, 8);
               logger.success(`Project already registered: ${chalk.cyan(name)}`);
             }
           }
@@ -157,7 +158,7 @@ export const initCommand = new Command("init")
           try {
             const projName = basename(process.cwd());
             const response = await fetch(
-              `http://localhost:${DEFAULT_SERVER_PORT}/api/projects`,
+              `http://localhost:${serverPort}/api/projects`,
               {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -182,7 +183,7 @@ export const initCommand = new Command("init")
           if (projectId) {
             try {
               const regResponse = await fetch(
-                `http://localhost:${DEFAULT_SERVER_PORT}/api/registry`,
+                `http://localhost:${serverPort}/api/registry`,
                 {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
@@ -219,7 +220,7 @@ export const initCommand = new Command("init")
       logger.blank();
       try {
         const response = await fetch(
-          `http://localhost:${DEFAULT_SERVER_PORT}/api/sessions`,
+          `http://localhost:${serverPort}/api/sessions`,
         );
         if (response.ok) {
           logger.success(

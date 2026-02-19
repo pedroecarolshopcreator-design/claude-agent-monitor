@@ -67,7 +67,7 @@ export const startCommand = new Command("start")
       logger.banner();
 
       // Auto-init: configure hooks if not already set up
-      autoInitHooks();
+      autoInitHooks(serverPort);
 
       // Check if server is already running
       try {
@@ -271,30 +271,22 @@ async function waitForServer(
   return false;
 }
 
-function autoInitHooks(): void {
-  const camHooks = generateHooksConfig();
+function autoInitHooks(port?: number): void {
+  const camHooks = generateHooksConfig(port);
   let hooksConfigured = false;
 
   if (claudeSettingsExist()) {
-    // Check if CAM hooks are already configured
+    // Always merge CAM hooks to ensure new hook types are added on updates
     const settings = readClaudeSettings();
-    const hooks = (settings.hooks ?? {}) as Record<string, HookEntry[]>;
-    const hasCamHooks = Object.values(hooks).some((entries) =>
-      entries.some((e) => isCamHook(e)),
-    );
-
-    if (!hasCamHooks) {
-      // Merge CAM hooks into existing settings
-      const merged = mergeHooks(settings, camHooks);
-      writeClaudeSettings(merged);
-      logger.success("CAM hooks auto-configured (merged with existing settings)");
-      hooksConfigured = true;
-    }
+    const merged = mergeHooks(settings, camHooks);
+    writeClaudeSettings(merged);
+    logger.success("CAM hooks configured");
+    hooksConfigured = true;
   } else {
     // Create new settings with hooks
     ensureClaudeDir();
     writeClaudeSettings({ hooks: camHooks });
-    logger.success("CAM hooks auto-configured (.claude/settings.json created)");
+    logger.success("CAM hooks configured (.claude/settings.json created)");
     hooksConfigured = true;
   }
 
@@ -320,11 +312,16 @@ async function autoRegisterProject(port: number): Promise<void> {
       `http://localhost:${port}/api/registry/lookup?dir=${encodeURIComponent(cwd)}`,
     );
     if (lookupRes.ok) {
-      const data = (await lookupRes.json()) as { project_id?: string };
-      if (data.project_id) {
+      const data = (await lookupRes.json()) as {
+        registry?: { project_id?: string; project_name?: string };
+      };
+      if (data.registry?.project_id) {
         // Already registered — save to config
         const config = readConfig();
-        writeConfig({ ...config, activeProjectId: data.project_id });
+        writeConfig({ ...config, activeProjectId: data.registry.project_id });
+        logger.success(
+          `Project: ${chalk.cyan(data.registry.project_name ?? data.registry.project_id.slice(0, 8))}`,
+        );
         return;
       }
     }
@@ -332,33 +329,58 @@ async function autoRegisterProject(port: number): Promise<void> {
     // Lookup failed, try to create
   }
 
-  // Create project
+  // Check if a project with this name already exists
   let projectId: string | null = null;
-  try {
-    const projName = basename(cwd);
-    const response = await fetch(`http://localhost:${port}/api/projects`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: projName, prd_content: "" }),
-    });
+  const projName = basename(cwd);
 
-    if (response.ok) {
-      const data = (await response.json()) as {
-        project?: { id: string; name: string };
+  try {
+    const listRes = await fetch(`http://localhost:${port}/api/projects`);
+    if (listRes.ok) {
+      const listData = (await listRes.json()) as {
+        projects?: Array<{ id: string; name: string }>;
       };
-      if (data.project) {
-        projectId = data.project.id;
-        logger.success(`Project registered: ${chalk.cyan(data.project.name)}`);
+      const existing = listData.projects?.find(
+        (p) => p.name.toLowerCase() === projName.toLowerCase(),
+      );
+      if (existing) {
+        projectId = existing.id;
+        logger.success(`Project: ${chalk.cyan(existing.name)}`);
       }
     }
   } catch {
-    // Project creation failed silently
+    // List failed, will try to create
+  }
+
+  // Create project only if none exists with this name
+  if (!projectId) {
+    try {
+      const response = await fetch(`http://localhost:${port}/api/projects`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: projName, prd_content: "" }),
+      });
+
+      if (response.ok) {
+        const data = (await response.json()) as {
+          project?: { id: string; name: string };
+        };
+        if (data.project) {
+          projectId = data.project.id;
+          logger.success(`Project created: ${chalk.cyan(data.project.name)}`);
+        }
+      } else {
+        const errText = await response.text();
+        logger.warning(`Failed to create project: ${errText}`);
+      }
+    } catch (err) {
+      logger.warning(`Failed to create project: ${(err as Error).message}`);
+    }
   }
 
   // Register working directory
   if (projectId) {
     try {
-      await fetch(`http://localhost:${port}/api/registry`, {
+      const regRes = await fetch(`http://localhost:${port}/api/registry`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -367,8 +389,13 @@ async function autoRegisterProject(port: number): Promise<void> {
           prd_path: null,
         }),
       });
-    } catch {
-      // Registry failed silently
+      if (regRes.ok) {
+        logger.success(`Directory registered: ${chalk.gray(cwd)}`);
+      } else {
+        logger.warning(`Failed to register directory: ${await regRes.text()}`);
+      }
+    } catch (err) {
+      logger.warning(`Failed to register directory: ${(err as Error).message}`);
     }
 
     // Save to local config

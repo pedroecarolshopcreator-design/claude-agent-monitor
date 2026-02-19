@@ -41,6 +41,8 @@ export function useSSE(sessionId?: string) {
         setConnectionStatus("reconnecting");
       },
       onEvent: (data: AgentEvent) => {
+        // Only process events for the current session
+        if (data.sessionId && data.sessionId !== sessionId) return;
         addEvent(data);
         if (data.agentId) {
           addAgent({

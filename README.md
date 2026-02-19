@@ -57,36 +57,37 @@ CAM was built for developers who use **Claude Code** (with Opus model) to build 
 
 ## Quick Start
 
-### Step 1: Install
-
-```bash
-npm install -g claude-agent-monitor
-```
-
-### Step 2: Initialize your project
+### Option A: Use with npx (no install needed)
 
 ```bash
 cd your-project
-cam init
-# CAM will:
-#   - Configure Claude Code hooks
-#   - Create docs/PRD/ and docs/SPRINTS/ with templates
-#   - Register the project for monitoring
-```
 
-### Step 3: Start working
+# Initialize hooks + project registration
+npx @claudecam/cli init
 
-```bash
-# Start the CAM server + dashboard
-cam start
+# Start server + dashboard (opens browser)
+npx @claudecam/cli start
 
-# In another terminal, use Claude Code as you normally would
+# In another terminal, use Claude Code normally
 claude "implement the auth module"
 
-# Open http://localhost:7891 and watch everything in real-time
+# Open http://localhost:7890 and watch everything in real-time
 ```
 
-That's it. Three commands and you have full observability.
+### Option B: Install globally
+
+```bash
+npm install -g @claudecam/cli
+
+cd your-project
+cam init
+cam start
+
+# In another terminal
+claude "implement the auth module"
+```
+
+That's it. Two commands and you have full observability.
 
 ### Adding Sprint Tracking (optional)
 
@@ -303,10 +304,11 @@ CAM captures the following Claude Code hook events:
 | `PostToolUse` | After tool call completes | Records result, duration, detects errors, correlates to PRD tasks |
 | `UserPromptSubmit` | When user sends a prompt | Tracks user interaction within sessions |
 | `Notification` | Claude Code sends a notification | Displays alerts in dashboard |
+| `PostToolUseFailure` | When a tool call fails | Records error details, tracks failure patterns |
 | `Stop` | Main agent stops | Marks session end, triggers cleanup |
+| `SubagentStart` | A teammate agent starts | Tracks agent spawn and lifecycle |
 | `SubagentStop` | A teammate agent stops | Tracks agent lifecycle |
 | `PreCompact` | Before context compaction | Monitors context usage |
-| `PostCompact` | After context compaction | Tracks compaction efficiency |
 
 ---
 
@@ -445,13 +447,13 @@ git clone https://github.com/pedropauloai/claude-agent-monitor.git
 cd claude-agent-monitor
 pnpm install
 pnpm build        # Build all packages (shared must build first)
-pnpm dev           # Start dev mode (server :7890, dashboard :7891)
+pnpm dev           # Start dev mode (server :7860, dashboard :7861)
 ```
 
 ### Available Scripts
 
 ```bash
-pnpm dev           # Start all packages in dev mode with hot reload
+pnpm dev           # Start all packages in dev mode (server :7860, dashboard :7861)
 pnpm build         # Build all packages
 pnpm typecheck     # Type-check all packages
 pnpm lint          # Lint all packages

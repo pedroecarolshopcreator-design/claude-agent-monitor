@@ -56,6 +56,7 @@ export function useZoomPan(
       // Horizontal scroll → let browser handle it
       if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
       e.preventDefault(); // Must be non-passive to work
+      e.stopPropagation(); // Prevent Spline canvas from intercepting wheel events
 
       const rect = container!.getBoundingClientRect();
       const cursorX = e.clientX - rect.left;
@@ -78,9 +79,10 @@ export function useZoomPan(
       });
     }
 
-    // Non-passive to allow preventDefault
-    container.addEventListener('wheel', onWheel, { passive: false });
-    return () => container.removeEventListener('wheel', onWheel);
+    // Capture phase so our zoom handler runs BEFORE the Spline canvas
+    // can intercept the event. Non-passive to allow preventDefault.
+    container.addEventListener('wheel', onWheel, { passive: false, capture: true });
+    return () => container.removeEventListener('wheel', onWheel, { capture: true });
   }, [containerRef]);
 
   // ---- Pan: mouse down ----

@@ -20,13 +20,13 @@
         ]
       },
       {
-        "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/cam-hook.sh pre-tool-use"
+            "command": "CAM_PORT=7860 cam-hook pre-tool-use"
           }
-        ]
+        ],
+        "matcher": "*"
       }
     ],
     "PostToolUse": [
@@ -40,24 +40,35 @@
         ]
       },
       {
-        "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/cam-hook.sh post-tool-use"
+            "command": "CAM_PORT=7860 cam-hook post-tool-use"
           }
-        ]
+        ],
+        "matcher": "*"
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CAM_PORT=7860 cam-hook post-tool-use-failure"
+          }
+        ],
+        "matcher": "*"
       }
     ],
     "Notification": [
       {
-        "matcher": "*",
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/cam-hook.sh notification"
+            "command": "CAM_PORT=7860 cam-hook notification"
           }
-        ]
+        ],
+        "matcher": "*"
       }
     ],
     "Stop": [
@@ -65,17 +76,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/cam-hook.sh stop"
-          }
-        ]
-      }
-    ],
-    "SubagentStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash scripts/cam-hook.sh subagent-start"
+            "command": "CAM_PORT=7860 cam-hook stop"
           }
         ]
       }
@@ -85,7 +86,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/cam-hook.sh subagent-stop"
+            "command": "CAM_PORT=7860 cam-hook subagent-stop"
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CAM_PORT=7860 cam-hook subagent-start"
           }
         ]
       }
@@ -95,7 +106,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/cam-hook.sh pre-compact"
+            "command": "CAM_PORT=7860 cam-hook pre-compact"
           }
         ]
       }
@@ -105,7 +116,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/cam-hook.sh session-start"
+            "command": "CAM_PORT=7860 cam-hook session-start"
           }
         ]
       }
@@ -115,7 +126,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/cam-hook.sh session-end"
+            "command": "CAM_PORT=7860 cam-hook session-end"
           }
         ]
       }
@@ -125,18 +136,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash scripts/cam-hook.sh user-prompt-submit"
-          }
-        ]
-      }
-    ],
-    "PostToolUseFailure": [
-      {
-        "matcher": "*",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash scripts/cam-hook.sh post-tool-use-failure"
+            "command": "CAM_PORT=7860 cam-hook user-prompt-submit"
           }
         ]
       }

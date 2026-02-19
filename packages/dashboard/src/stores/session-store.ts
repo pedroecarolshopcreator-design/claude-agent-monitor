@@ -40,7 +40,13 @@ export const useSessionStore = create<SessionState>((set) => ({
   lastHeartbeat: null,
   activityWindow: 300_000,
 
-  setSession: (session) => set({ session }),
+  setSession: (session) =>
+    set((state) => {
+      // When switching to a different session, clear stale events and agents
+      const isSameSession = state.session?.id === session?.id;
+      if (isSameSession) return { session };
+      return { session, events: [], agents: [], selectedAgentId: null };
+    }),
 
   setProjectId: (projectId) => set({ projectId }),
 
@@ -67,9 +73,11 @@ export const useSessionStore = create<SessionState>((set) => ({
   setEvents: (events) => set({ events }),
 
   addEvent: (event) =>
-    set((state) => ({
-      events: [event, ...state.events].slice(0, 500),
-    })),
+    set((state) => {
+      // Only accept events belonging to the current session
+      if (state.session && event.sessionId !== state.session.id) return state;
+      return { events: [event, ...state.events].slice(0, 500) };
+    }),
 
   selectAgent: (agentId) => set({ selectedAgentId: agentId }),
 

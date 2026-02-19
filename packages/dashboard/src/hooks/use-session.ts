@@ -27,41 +27,44 @@ export function useSession() {
     }
 
     try {
-      // 1. Try to find a registered project with active sessions
+      // 1. Try to find a registered project and its sessions
       try {
         const { registrations } = await api.getRegisteredProjects();
         if (registrations.length > 0) {
           const activeReg = registrations.find(r => r.project_status === "active") || registrations[0];
           setProjectId(activeReg.project_id);
 
-          // Get sessions ONLY for this project (filtered by project_id)
+          // Get sessions for this project (filtered by project_id)
           const { sessions } = await api.getProjectSessions(activeReg.project_id);
-          const activeSession = sessions.find((s: Record<string, unknown>) => s.status === "active");
-          if (activeSession) {
-            const { session: fullSession } = await api.getSession(activeSession.id as string);
+
+          if (sessions.length > 0) {
+            // Prefer active session, fall back to most recent (already sorted by started_at DESC)
+            const activeSession = sessions.find((s: Record<string, unknown>) => s.status === "active");
+            const bestSession = activeSession || sessions[0];
+
+            const { session: fullSession } = await api.getSession(bestSession.id as string);
             setSession(fullSession);
             hasInitialized.current = true;
             return;
           }
-        }
 
-        // No registered projects or no active sessions for this project.
-        // Show the onboarding screen instead of sessions from other projects.
-        hasInitialized.current = true;
-        return;
+          // Project exists but has no sessions yet.
+          // Keep polling so we auto-detect new sessions.
+          return;
+        }
       } catch {
-        // Registry API not available — fall back to latest active session
-        // (legacy behavior for servers without project registry support)
+        // Registry API not available — fall through to global fallback
       }
 
-      // 2. Fall back only when registry API is unavailable
+      // 2. Fallback: latest session globally (no project filter)
       setProjectId(null);
-      const { sessions } = await api.getSessions({ status: "active", limit: 1 });
+      const { sessions } = await api.getSessions({ limit: 1 });
       if (sessions.length > 0) {
         const { session: latestSession } = await api.getSession(sessions[0].id);
         setSession(latestSession);
         hasInitialized.current = true;
       }
+      // No sessions at all — keep polling (show welcome screen)
     } catch {
       // API not available - retry on next interval
     }
@@ -69,7 +72,6 @@ export function useSession() {
 
   useEffect(() => {
     loadSession();
-    // Keep polling only until initial session is found, then stop
     const interval = setInterval(loadSession, 15_000);
     return () => clearInterval(interval);
   }, [loadSession]);
