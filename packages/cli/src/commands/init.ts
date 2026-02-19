@@ -238,9 +238,11 @@ export const initCommand = new Command("init")
       // Next steps
       logger.blank();
       logger.section("Next steps");
-      logger.info(`Create a PRD:    copy ${chalk.cyan("docs/PRD/TEMPLATE.md")} to ${chalk.cyan("PRD.md")} (optional)`);
-      logger.info(`Create a sprint: copy ${chalk.cyan("docs/SPRINTS/TEMPLATE.md")} to ${chalk.cyan("sprint-01.md")}`);
-      logger.info(`Import tasks:    ${chalk.cyan("cam sprint import docs/SPRINTS/sprint-01.md")}`);
+      logger.info(`1. Create a sprint: ${chalk.cyan("cp docs/SPRINTS/TEMPLATE.md docs/SPRINTS/sprint-01.md")}`);
+      logger.info(`2. Edit the file with your tasks`);
+      logger.info(`3. Import:          ${chalk.cyan("cam sprint sync")}`);
+      logger.blank();
+      logger.info(chalk.gray(`Observability is active! Sprint tracking is optional.`));
       logger.blank();
     },
   );
