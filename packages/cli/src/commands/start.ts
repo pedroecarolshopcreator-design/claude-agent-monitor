@@ -7,7 +7,19 @@ import { dirname, join } from "node:path";
 import { existsSync } from "node:fs";
 import { DEFAULT_SERVER_PORT, DEFAULT_DASHBOARD_PORT } from "@claudecam/shared";
 import { logger } from "../utils/logger.js";
-import { writeConfig } from "../utils/config.js";
+import {
+  writeConfig,
+  claudeSettingsExist,
+  readClaudeSettings,
+  writeClaudeSettings,
+  ensureClaudeDir,
+} from "../utils/config.js";
+import {
+  generateHooksConfig,
+  mergeHooks,
+  isCamHook,
+  type HookEntry,
+} from "../utils/hooks-config.js";
 
 export const startCommand = new Command("start")
   .description("Start the Claude Agent Monitor server and dashboard")
@@ -51,6 +63,9 @@ export const startCommand = new Command("start")
       });
 
       logger.banner();
+
+      // Auto-init: configure hooks if not already set up
+      autoInitHooks();
 
       // Check if server is already running
       try {
@@ -236,6 +251,35 @@ async function waitForServer(
   }
 
   return false;
+}
+
+function autoInitHooks(): void {
+  const camHooks = generateHooksConfig();
+
+  if (claudeSettingsExist()) {
+    // Check if CAM hooks are already configured
+    const settings = readClaudeSettings();
+    const hooks = (settings.hooks ?? {}) as Record<string, HookEntry[]>;
+    const hasCamHooks = Object.values(hooks).some((entries) =>
+      entries.some((e) => isCamHook(e)),
+    );
+
+    if (hasCamHooks) {
+      return; // Already initialized
+    }
+
+    // Merge CAM hooks into existing settings
+    const merged = mergeHooks(settings, camHooks);
+    writeClaudeSettings(merged);
+    logger.success("CAM hooks auto-configured (merged with existing settings)");
+    logger.blank();
+  } else {
+    // Create new settings with hooks
+    ensureClaudeDir();
+    writeClaudeSettings({ hooks: camHooks });
+    logger.success("CAM hooks auto-configured (.claude/settings.json created)");
+    logger.blank();
+  }
 }
 
 function openBrowser(url: string): void {
