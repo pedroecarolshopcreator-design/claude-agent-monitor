@@ -1,10 +1,14 @@
 import Database from 'better-sqlite3';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { homedir } from 'node:os';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+/** Global data directory: ~/.cam/ */
+const CAM_DATA_DIR = join(homedir(), '.cam');
 
 let db: Database.Database;
 
@@ -16,7 +20,10 @@ export function getDb(): Database.Database {
 }
 
 export function initDb(dbPath?: string): Database.Database {
-  const resolvedPath = dbPath ?? join(process.cwd(), 'cam-data.db');
+  const resolvedPath = dbPath ?? join(CAM_DATA_DIR, 'cam-data.db');
+
+  // Ensure the data directory exists
+  mkdirSync(dirname(resolvedPath), { recursive: true });
 
   db = new Database(resolvedPath);
 
