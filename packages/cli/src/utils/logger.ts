@@ -1,4 +1,15 @@
 import chalk from 'chalk';
+import { createRequire } from 'node:module';
+
+function getVersion(): string {
+  try {
+    const require = createRequire(import.meta.url);
+    const pkg = require('../../package.json') as { version: string };
+    return pkg.version;
+  } catch {
+    return '0.1.0';
+  }
+}
 
 export const logger = {
   info(message: string): void {
@@ -27,7 +38,7 @@ export const logger = {
 
   banner(): void {
     console.log();
-    console.log(chalk.bold.cyan('  Claude Agent Monitor') + chalk.gray(' v1.0.0'));
+    console.log(chalk.bold.cyan('  Claude Agent Monitor') + chalk.gray(` v${getVersion()}`));
     console.log();
   },
 

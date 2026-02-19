@@ -10,6 +10,9 @@ importers:
 
   packages/cli:
     dependencies:
+      '@claudecam/dashboard':
+        specifier: workspace:*
+        version: link:../dashboard
       '@claudecam/hook':
         specifier: workspace:*
         version: link:../hook
