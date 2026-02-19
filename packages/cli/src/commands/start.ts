@@ -75,17 +75,21 @@ export const startCommand = new Command("start")
           `http://localhost:${serverPort}/api/health`,
         );
         if (response.ok) {
-          logger.warning(`Server is already running on port ${serverPort}`);
+          // Server already running — still register THIS project so it
+          // shows up in the dashboard instead of another project's sessions
+          await autoRegisterProject(serverPort);
+
+          logger.info(
+            `Server already running on port ${chalk.cyan(String(serverPort))}`,
+          );
           logger.info(
             `Dashboard: ${chalk.cyan(`http://localhost:${serverPort}`)}`,
           );
-          logger.info(
-            `To restart: ${chalk.cyan("Ctrl+C")} on the running server, then run ${chalk.cyan("cam start")} again`,
-          );
-          logger.info(
-            `To use a different port: ${chalk.cyan(`cam start --port ${serverPort + 10}`)}`,
-          );
           logger.blank();
+
+          if (options.open) {
+            openBrowser(`http://localhost:${serverPort}`);
+          }
           return;
         }
       } catch {

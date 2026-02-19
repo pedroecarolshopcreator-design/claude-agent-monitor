@@ -34,19 +34,19 @@ export function useSession() {
           const activeReg = registrations.find(r => r.project_status === "active") || registrations[0];
           setProjectId(activeReg.project_id);
 
-          // Get active session for this project
-          const { sessions } = await api.getSessions({ status: "active", limit: 10 });
+          // Get sessions ONLY for this project (filtered by project_id)
+          const { sessions } = await api.getProjectSessions(activeReg.project_id);
           const activeSession = sessions.find((s: Record<string, unknown>) => s.status === "active");
           if (activeSession) {
-            const { session: fullSession } = await api.getSession(activeSession.id);
+            const { session: fullSession } = await api.getSession(activeSession.id as string);
             setSession(fullSession);
             hasInitialized.current = true;
             return;
           }
         }
 
-        // No registered projects or no active sessions — don't fall back
-        // to random sessions from other projects. Let the onboarding show.
+        // No registered projects or no active sessions for this project.
+        // Show the onboarding screen instead of sessions from other projects.
         hasInitialized.current = true;
         return;
       } catch {
