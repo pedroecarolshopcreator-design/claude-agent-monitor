@@ -1,6 +1,6 @@
 {
   "name": "@cam/shared",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Shared types and schemas for Claude Agent Monitor",
   "license": "MIT",
   "type": "module",
@@ -28,11 +28,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/user/claude-agent-monitor.git",
+    "url": "https://github.com/pedropauloai/claude-agent-monitor.git",
     "directory": "packages/shared"
   },
-  "homepage": "https://github.com/user/claude-agent-monitor",
-  "bugs": "https://github.com/user/claude-agent-monitor/issues",
+  "homepage": "https://github.com/pedropauloai/claude-agent-monitor",
+  "bugs": "https://github.com/pedropauloai/claude-agent-monitor/issues",
   "keywords": ["claude", "agent", "monitor", "observability", "claude-code"],
   "author": "CAM Contributors",
   "publishConfig": {

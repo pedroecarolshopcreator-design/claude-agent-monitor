@@ -1,6 +1,6 @@
 {
   "name": "claude-agent-monitor",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Mission Control for Claude Code agents: real-time observability + visual PRD/Sprint tracking",
   "private": true,
   "license": "MIT",

@@ -164,11 +164,16 @@ export const agentQueries: Record<string, () => Statement> = {
     `);
   },
 
-  /** Find agents created recently whose name equals their ID (unnamed/temporary). */
+  /** Find agents created recently whose name equals their ID, looks like a UUID, or has a placeholder name. */
   getRecentUnnamed() {
     return db().prepare(`
       SELECT * FROM agents
-      WHERE name = id
+      WHERE (name = id
+        OR name GLOB '[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]-*'
+        OR name GLOB 'agent-[0-9]*'
+        OR name = 'Subagent'
+        OR name GLOB 'Subagent #[0-9]*'
+        OR name = 'subagent')
         AND first_seen_at > ?
       ORDER BY first_seen_at DESC
     `);

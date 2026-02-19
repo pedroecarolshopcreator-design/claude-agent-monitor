@@ -13,7 +13,7 @@ import { ModernDependencyGraph } from "./ModernDependencyGraph";
 import { ModernProjectSelector } from "./ModernProjectSelector";
 import { SessionPicker } from "../../shared/SessionPicker";
 import { useSettingsStore } from "../../../stores/settings-store.js";
-import { AgentMap } from "../../agent-map/AgentMap";
+import { AgentMap3D } from "../../agent-map-3d/AgentMap3D.js";
 import { TaskDetailPanel } from "../../shared/TaskDetailPanel";
 import { HorizontalLayout, ResizablePanel, ResizeHandle, VerticalLayout } from "../../layout/ResizableLayout.js";
 import { AgentRightPanel } from "../../shared/AgentRightPanel.js";
@@ -116,7 +116,7 @@ function AgentsLayout() {
       <ResizeHandle disabled={lockPanels} />
       <ResizablePanel defaultSize={55} minSize={30} order={2}>
         <main className="h-full overflow-hidden">
-          <AgentMap />
+          <AgentMap3D />
         </main>
       </ResizablePanel>
       <ResizeHandle disabled={lockPanels} />

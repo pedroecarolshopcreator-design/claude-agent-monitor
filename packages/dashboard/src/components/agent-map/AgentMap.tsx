@@ -11,6 +11,9 @@ import "./agent-map.css";
 
 export function AgentMap() {
   const agents = useSessionStore((s) => s.agents);
+  const session = useSessionStore((s) => s.session);
+  const connectionStatus = useSessionStore((s) => s.connectionStatus);
+  const events = useSessionStore((s) => s.events);
   const selectedAgentId = useSessionStore((s) => s.selectedAgentId);
   const selectAgent = useSessionStore((s) => s.selectAgent);
   const { positions, speechBubbles, interactionLines, showInteractions } =
@@ -86,6 +89,11 @@ export function AgentMap() {
           speechBubbles={speechBubbles}
           selectedAgentId={selectedAgentId}
           onSelectAgent={handleSelectAgent}
+          sessionStatus={session?.status ?? null}
+          sessionStartedAt={session?.startedAt ?? null}
+          connectionStatus={connectionStatus}
+          eventCount={events.length}
+          totalAgentsEver={session?.agentCount ?? 0}
         />
 
         {/* Parent-child hierarchy lines (subtle dotted) */}

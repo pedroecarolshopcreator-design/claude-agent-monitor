@@ -12,7 +12,7 @@ import { PixelPRDOverview } from "./PixelPRDOverview";
 import { PixelDependencyGraph } from "./PixelDependencyGraph";
 import { PixelProjectSelector } from "./PixelProjectSelector";
 import { SessionPicker } from "../../shared/SessionPicker";
-import { AgentMap } from "../../agent-map/AgentMap";
+import { AgentMap3D } from "../../agent-map-3d/AgentMap3D.js";
 import { TaskDetailPanel } from "../../shared/TaskDetailPanel";
 import { AgentRightPanel } from "../../shared/AgentRightPanel.js";
 import { InProcessWarning } from "../../shared/InProcessWarning.js";
@@ -115,7 +115,7 @@ function AgentsLayout() {
 
       {/* Center - Agent Map */}
       <main className="flex-1 overflow-hidden">
-        <AgentMap />
+        <AgentMap3D />
       </main>
 
       {/* Right Panel - Battle Log / File Watch or Character Sheet */}

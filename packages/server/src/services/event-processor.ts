@@ -46,14 +46,103 @@ const spawnedSubagentQueue = new Map<string, string[]>();
  */
 const pendingAgentNames: string[] = [];
 
-/** Stale session timeout (ms). Sessions inactive for this long are marked completed. */
-const STALE_SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+/** Track the first session ID seen - this is the main/leader agent. */
+let firstMainSessionId: string | null = null;
 
-/** Interval (ms) for running the stale session cleanup. */
-export const STALE_SESSION_CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+/**
+ * Track agent name usage counts per session for deduplication.
+ * Key: "sessionId::name" → count of agents with that name in that session.
+ */
+const agentNameCounts = new Map<string, number>();
+
+// NOTE: Stale session timeout REMOVED.
+// Sessions should only be completed by explicit SessionEnd hooks,
+// not by inactivity timeouts. A user reading Claude's output or thinking
+// about the next prompt does NOT mean the session ended.
 
 /** Window (ms) for retroactive agent name updates. Agents created within this window can be renamed. */
-const RETROACTIVE_NAME_WINDOW_MS = 30 * 1000;
+const RETROACTIVE_NAME_WINDOW_MS = 60 * 1000;
+
+// ---------------------------------------------------------------------------
+// Session Name Extraction (Feature A: smart heuristic)
+// ---------------------------------------------------------------------------
+
+/** Words/patterns to skip at the start of a prompt (greetings, filler, terminal prompts). */
+const SKIP_PATTERNS = [
+  // Terminal prompts (user@host, PS1, etc.)
+  /^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+\s/,
+  /^[A-Z]:\\.*[>$#]\s*/,
+  /^\/[a-z].*[>$#]\s*/,
+  /^MINGW\d*_NT\S*\s*/,
+  /^\$\s*/,
+  /^>\s*/,
+  // Common greetings and filler words (PT-BR + EN)
+  /^(oi|olá|ola|hey|hi|hello|e aí|eai|fala|bom dia|boa tarde|boa noite|ta|tá|ok|okay|certo|beleza|blz|sim|yes|then|so|entao|então|agora|now|please|por favor|pfv|pf)[,.\s!]+/i,
+];
+
+/** Extract a meaningful session name from the first user prompt. */
+function extractSessionName(rawInput: unknown): string | undefined {
+  let text = typeof rawInput === 'string' ? rawInput : JSON.stringify(rawInput);
+
+  // Unwrap JSON wrapper: {"prompt": "actual text"}
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && typeof parsed.prompt === 'string') text = parsed.prompt;
+    else if (parsed && typeof parsed.message === 'string') text = parsed.message;
+    else if (parsed && parsed.message?.content) text = parsed.message.content;
+  } catch { /* not JSON, use raw */ }
+
+  // Strip system/XML tags with content
+  text = text
+    .replace(/<[^>]+>[\s\S]*?<\/[^>]+>/g, '')
+    .replace(/<[^>]+>/g, '');
+
+  // Normalize whitespace
+  text = text
+    .replace(/[\r\n]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  // Strip leading markdown formatting
+  text = text.replace(/^[\s#*\->`]+/, '').trim();
+
+  // Apply skip patterns repeatedly until no more matches
+  let prev = '';
+  while (prev !== text) {
+    prev = text;
+    for (const pattern of SKIP_PATTERNS) {
+      text = text.replace(pattern, '').trim();
+    }
+  }
+
+  if (text.length < 3) return undefined;
+
+  // Extract first sentence (up to . ? ! or comma if long enough)
+  const sentenceMatch = text.match(/^(.+?)[.?!](?:\s|$)/);
+  const firstSentence = sentenceMatch ? sentenceMatch[1]!.trim() : text;
+
+  // Truncate to ~50 chars at word boundary
+  const MAX_NAME_LENGTH = 50;
+  if (firstSentence.length <= MAX_NAME_LENGTH) {
+    return capitalize(firstSentence);
+  }
+
+  const words = firstSentence.split(' ');
+  let name = '';
+  for (const word of words) {
+    const candidate = name ? `${name} ${word}` : word;
+    if (candidate.length > MAX_NAME_LENGTH) break;
+    name = candidate;
+  }
+
+  return name ? capitalize(name) + '...' : undefined;
+}
+
+/** Capitalize first letter only. */
+function capitalize(s: string): string {
+  if (!s) return s;
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
 
 interface IncomingEvent {
   hook: HookType;
@@ -247,10 +336,11 @@ function persistEvent(event: AgentEvent, now: string): void {
     existingSession["status"] === "completed" ||
     existingSession["status"] === "error"
   ) {
-    // Reactivate session when new events arrive (e.g., after context compaction)
+    // Reactivate session when new events arrive (e.g., after context compaction
+    // or user reopens Claude after SessionEnd)
     sessionQueries.updateStatus().run("active", null, event.sessionId);
-    // Re-activate the main agent too
-    agentQueries.updateStatus().run("active", now, "main", event.sessionId);
+    // Re-activate the actual agent that sent the event (not hardcoded "main")
+    agentQueries.updateStatus().run("active", now, event.agentId, event.sessionId);
     const reactivatePayload = {
       session: event.sessionId,
       status: "active",
@@ -279,33 +369,12 @@ function persistEvent(event: AgentEvent, now: string): void {
   if (event.hookType === 'UserPromptSubmit' && event.input) {
     const currentSession = sessionQueries.getById().get(event.sessionId) as Record<string, unknown> | undefined;
     const currentMeta = currentSession?.['metadata'] ? JSON.parse(currentSession['metadata'] as string) : {};
+    // Only auto-name if no name set, or if name was auto-generated (not user-edited)
     if (!currentMeta.name) {
-      let rawText = typeof event.input === 'string' ? event.input : JSON.stringify(event.input);
-      // Extract prompt from JSON wrapper: {"prompt": "actual text"}
-      try {
-        const parsed = JSON.parse(rawText);
-        if (parsed && typeof parsed.prompt === 'string') rawText = parsed.prompt;
-        else if (parsed && typeof parsed.message === 'string') rawText = parsed.message;
-        else if (parsed && parsed.message?.content) rawText = parsed.message.content;
-      } catch { /* not JSON, use raw */ }
-      // Strip system tags (<system-reminder>, <task-notification>, etc.)
-      const cleaned = rawText
-        .replace(/<[^>]+>[\s\S]*?<\/[^>]+>/g, '')  // remove XML-like tags with content
-        .replace(/<[^>]+>/g, '')                     // remove self-closing tags
-        .replace(/^[\s#*\->`]+/, '')                 // leading markdown
-        .replace(/[\r\n]+/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-      // Extract short summary (max 30 chars at word boundary)
-      const words = cleaned.split(' ');
-      let sessionName = '';
-      for (const word of words) {
-        const candidate = sessionName ? `${sessionName} ${word}` : word;
-        if (candidate.length > 30) break;
-        sessionName = candidate;
-      }
-      if (sessionName) {
-        currentMeta.name = sessionName;
+      const autoName = extractSessionName(event.input);
+      if (autoName) {
+        currentMeta.name = autoName;
+        currentMeta.nameSource = 'auto';
         sessionQueries.updateMetadata().run(JSON.stringify(currentMeta), event.sessionId);
       }
     }
@@ -316,23 +385,41 @@ function persistEvent(event: AgentEvent, now: string): void {
     .getById()
     .get(event.agentId, event.sessionId) as Record<string, unknown> | undefined;
   if (!existingAgent) {
-    // Agent name resolution with 4 layers:
-    // Layer 1: SessionStart -> "main" (this is the leader/main agent)
-    // Layer 2: Pending name from Task tool queue (subagent name designated by parent)
-    // Layer 3: agent_name from metadata
-    // Layer 4: Fallback to agentId (dashboard generates friendly name)
+    // Agent name resolution (priority order):
+    // 1. Pending name from Task tool queue (subagent name from parent)
+    // 2. agent_name from event metadata
+    // 3. Model name from SessionStart (e.g., "Opus 4.6") - for first session only
+    // 4. "main" if first session and no model available
+    // 5. Meaningful fallback (agent type or sequential "agent-N", never UUID)
     const agentType =
       (event.metadata?.["agent_type"] as string) || "general-purpose";
-    const isMainAgent = event.hookType === "SessionStart";
-    const pendingName = !isMainAgent && pendingAgentNames.length > 0
+
+    // Track the very first session - this is the main/leader agent
+    if (!firstMainSessionId) {
+      firstMainSessionId = event.sessionId;
+    }
+    const isMainSession = event.sessionId === firstMainSessionId;
+
+    // Check pending names from Task tool queue - available for ALL agents
+    const pendingName = pendingAgentNames.length > 0
       ? pendingAgentNames.shift()
       : undefined;
+
+    // Extract model name from SessionStart metadata (e.g., "claude-opus-4-6" → "Opus 4.6")
+    // Available for ALL agents, not just main (subagents also report their model).
+    const modelName = formatModelName((event.metadata?.["model"] as string) || "");
+
+    // Name resolution (priority order):
+    // 1. Pending name from Task tool queue (e.g., "researcher")
+    // 2. metadata.agent_name (if hook sends it - currently never)
+    // 3. Main/leader agent: model name or "main"
+    // 4. Smart fallback: descriptive agent_type > model name > "Subagent" (deduplicated)
     const agentName =
-      isMainAgent
-        ? "main"
-        : pendingName ||
-          (event.metadata?.["agent_name"] as string) ||
-          event.agentId;
+      pendingName                                           // 1: Task tool name ("researcher")
+      || (event.metadata?.["agent_name"] as string)         // 2: metadata.agent_name
+      || (isMainSession ? (modelName || "main") : null)     // 3: model name or "main" for leader
+      || generateAgentName(agentType, modelName, event.sessionId); // 4: type/model/Subagent (never UUID)
+
     agentQueries
       .upsert()
       .run(
@@ -421,55 +508,78 @@ function persistEvent(event: AgentEvent, now: string): void {
   }
 
   if (event.hookType === "Stop") {
+    // Stop = Claude finished responding, waiting for next prompt.
+    // This does NOT mean the session ended - mark agent as "idle", not "completed".
+    // Only SessionEnd should mark things as truly completed.
     agentQueries
       .updateStatus()
-      .run("completed", now, event.agentId, event.sessionId);
-    const completedPayload = {
+      .run("idle", now, event.agentId, event.sessionId);
+    const idlePayload = {
       agent: event.agentId,
       sessionId: event.sessionId,
-      status: "completed",
+      status: "idle",
     };
-    sseManager.broadcast("agent_status", completedPayload, event.sessionId);
+    sseManager.broadcast("agent_status", idlePayload, event.sessionId);
 
-    // Auto-complete tasks bound to this agent with high confidence
-    try {
-      autoCompleteTasksForAgent(event.agentId, event.sessionId);
-    } catch {
-      // Task completion errors should not break event processing
-    }
-
-    // Cross-broadcast completed status to project peers
-    const pidCompleted = getProjectForSession(event.sessionId);
-    if (pidCompleted) {
-      broadcastToProjectExcluding(pidCompleted, "agent_status", completedPayload, event.sessionId);
-    }
-
-    const activeAgents = (
-      agentQueries.getBySession().all(event.sessionId) as Array<
-        Record<string, unknown>
-      >
-    ).filter((a) => a["status"] === "active");
-    if (activeAgents.length === 0) {
-      sessionQueries.updateStatus().run("completed", now, event.sessionId);
-      const sessionCompletedPayload = {
-        session: event.sessionId,
-        status: "completed",
-      };
-      sseManager.broadcast(
-        "session_status",
-        sessionCompletedPayload,
-        event.sessionId,
-      );
-
-      // Cross-broadcast session_status to project peers
-      if (pidCompleted) {
-        broadcastToProjectExcluding(pidCompleted, "session_status", sessionCompletedPayload, event.sessionId);
-      }
+    // Cross-broadcast idle status to project peers
+    const pidStop = getProjectForSession(event.sessionId);
+    if (pidStop) {
+      broadcastToProjectExcluding(pidStop, "agent_status", idlePayload, event.sessionId);
     }
   }
 
-  // Auto-complete tasks on SessionEnd
+  // SessionEnd = session truly ended (user closed Claude or session expired).
+  // THIS is where we mark the session and all its agents as completed.
   if (event.hookType === "SessionEnd") {
+    // Mark all active/idle agents in this session as completed
+    const agents = agentQueries.getBySession().all(event.sessionId) as Array<
+      Record<string, unknown>
+    >;
+    for (const agent of agents) {
+      const agentStatus = agent["status"] as string;
+      if (agentStatus === "active" || agentStatus === "idle") {
+        const agentId = agent["id"] as string;
+        agentQueries
+          .updateStatus()
+          .run("completed", now, agentId, event.sessionId);
+        const agentCompletedPayload = {
+          agent: agentId,
+          sessionId: event.sessionId,
+          status: "completed",
+        };
+        sseManager.broadcast("agent_status", agentCompletedPayload, event.sessionId);
+      }
+    }
+
+    // Mark session as completed
+    sessionQueries.updateStatus().run("completed", now, event.sessionId);
+    const sessionCompletedPayload = {
+      session: event.sessionId,
+      status: "completed",
+    };
+    sseManager.broadcast(
+      "session_status",
+      sessionCompletedPayload,
+      event.sessionId,
+    );
+
+    // Cross-broadcast session completion to project peers
+    const pidEnd = getProjectForSession(event.sessionId);
+    if (pidEnd) {
+      broadcastToProjectExcluding(pidEnd, "session_status", sessionCompletedPayload, event.sessionId);
+      for (const agent of agents) {
+        const agentStatus = agent["status"] as string;
+        if (agentStatus === "active" || agentStatus === "idle") {
+          broadcastToProjectExcluding(pidEnd, "agent_status", {
+            agent: agent["id"],
+            sessionId: event.sessionId,
+            status: "completed",
+          }, event.sessionId);
+        }
+      }
+    }
+
+    // Auto-complete tasks bound to agents in this session
     try {
       autoCompleteTasksForSession(event.sessionId);
     } catch {
@@ -877,61 +987,75 @@ function handleTaskCompleted(
   }
 }
 
+// cleanupStaleSessions REMOVED: sessions are now only completed by explicit
+// SessionEnd hooks, not by inactivity timeouts.
+
+// ---------------------------------------------------------------------------
+// Agent Naming Helpers
+// ---------------------------------------------------------------------------
+
+/** Generic agent types not useful as display names. */
+const GENERIC_AGENT_TYPES = new Set([
+  "general-purpose", "general_purpose", "default", "agent", "unknown", "",
+]);
+
+/** Names that indicate the agent has no real name (placeholder patterns). */
+const PLACEHOLDER_NAME_PATTERN = /^(agent-\d+|subagent|unknown|Subagent(?: #\d+)?)$/i;
+
 /**
- * Cleanup stale sessions: mark active sessions with no recent activity as completed.
- * Uses the last event timestamp as ended_at (not "now"), so the session
- * end time accurately reflects when work actually stopped.
- * Should be called periodically (every 5 minutes via STALE_SESSION_CLEANUP_INTERVAL_MS).
+ * Format a Claude model ID into a human-readable name.
+ * "claude-opus-4-6" → "Opus 4.6"
+ * "claude-sonnet-4-6" → "Sonnet 4.6"
+ * "claude-haiku-4-5-20251001" → "Haiku 4.5"
  */
-export function cleanupStaleSessions(): void {
-  try {
-    const now = new Date().toISOString();
-    const cutoff = new Date(
-      Date.now() - STALE_SESSION_TIMEOUT_MS,
-    ).toISOString();
-    const staleSessions = sessionQueries
-      .getActiveStaleSessions()
-      .all(cutoff, cutoff) as Array<Record<string, unknown>>;
-
-    for (const session of staleSessions) {
-      const sessionId = session["id"] as string;
-      // Use the last event timestamp as ended_at, falling back to "now"
-      const lastEventAt = (session["last_event_at"] as string) || now;
-      sessionQueries.updateStatus().run("completed", lastEventAt, sessionId);
-
-      // Also mark all active agents in this session as completed
-      const agents = agentQueries.getBySession().all(sessionId) as Array<
-        Record<string, unknown>
-      >;
-      for (const agent of agents) {
-        if (agent["status"] === "active" || agent["status"] === "idle") {
-          const agentId = agent["id"] as string;
-          agentQueries
-            .updateStatus()
-            .run("completed", lastEventAt, agentId, sessionId);
-        }
-      }
-
-      sseManager.broadcast(
-        "session_status",
-        {
-          session: sessionId,
-          status: "completed",
-          reason: "stale_timeout",
-          endedAt: lastEventAt,
-        },
-        sessionId,
-      );
-    }
-
-    if (staleSessions.length > 0) {
-      console.log(
-        `[cleanup] Marked ${staleSessions.length} stale session(s) as completed`,
-      );
-    }
-  } catch {
-    // DB not ready or query error, skip silently
+function formatModelName(modelId: string): string | null {
+  if (!modelId) return null;
+  const match = modelId.match(/claude-(\w+)-(\d+)-(\d+)/);
+  if (match) {
+    const [, family, major, minor] = match;
+    return `${family!.charAt(0).toUpperCase() + family!.slice(1)} ${major}.${minor}`;
   }
+  return null; // Return null if unrecognizable (don't leak raw model strings)
+}
+
+/**
+ * Check if a string looks like an auto-generated ID (UUID or hex hash).
+ */
+function isLikelyId(value: string): boolean {
+  const trimmed = value.trim();
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed)) return true;
+  if (/^[0-9a-f]{8,}$/i.test(trimmed)) return true;
+  return false;
+}
+
+/**
+ * Generate a deduplicated agent name for a session.
+ * Uses agent_type if descriptive, model name if available, else "Subagent".
+ * Appends "#2", "#3" etc. when multiple agents share the same base name.
+ * NEVER returns a UUID, hex string, or "agent-N".
+ */
+function generateAgentName(agentType: string, modelName: string | null, sessionId: string): string {
+  const trimmedType = agentType.toLowerCase().trim();
+
+  // Determine base name: descriptive type > model name > "Subagent"
+  let baseName: string;
+  if (!GENERIC_AGENT_TYPES.has(trimmedType) && agentType.trim() && !isLikelyId(agentType.trim())) {
+    baseName = agentType.trim();
+  } else if (modelName) {
+    baseName = modelName;
+  } else {
+    baseName = "Subagent";
+  }
+
+  // Deduplicate: track how many agents in this session use this base name
+  const key = `${sessionId}::${baseName.toLowerCase()}`;
+  const currentCount = agentNameCounts.get(key) ?? 0;
+  agentNameCounts.set(key, currentCount + 1);
+
+  if (currentCount === 0) {
+    return baseName;
+  }
+  return `${baseName} #${currentCount + 1}`;
 }
 
 // ---------------------------------------------------------------------------

@@ -2,6 +2,15 @@ import { useCallback, useEffect, useRef } from "react";
 import * as api from "../lib/api.js";
 import { useSessionStore } from "../stores/session-store.js";
 
+/**
+ * Check if URL has a session_id parameter, meaning the session URL hook
+ * will handle session selection.
+ */
+function hasSessionIdInUrl(): boolean {
+  const params = new URLSearchParams(window.location.search);
+  return params.has('session_id');
+}
+
 export function useSession() {
   const { session, setSession, setProjectId } = useSessionStore();
   // Track whether user has manually selected a session (or initial load happened)
@@ -10,6 +19,12 @@ export function useSession() {
   const loadSession = useCallback(async () => {
     // If a session is already selected (initial load done or user picked one), don't override
     if (hasInitialized.current) return;
+
+    // If URL has session_id, let use-session-url handle session selection
+    if (hasSessionIdInUrl()) {
+      hasInitialized.current = true;
+      return;
+    }
 
     try {
       // 1. Try to find a registered project with active sessions

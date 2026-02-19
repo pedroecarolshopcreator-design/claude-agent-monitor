@@ -7,6 +7,7 @@ import { useSprint } from "./hooks/use-sprint";
 import { useTasks } from "./hooks/use-tasks";
 import { useAgentMapSync } from "./hooks/use-agent-map-sync";
 import { useProjectUrl } from "./hooks/use-project-url.js";
+import { useSessionUrl } from "./hooks/use-session-url.js";
 import { useSettingsSync } from "./hooks/use-settings-sync.js";
 
 export default function App() {
@@ -17,6 +18,7 @@ export default function App() {
   useTasks();
   useAgentMapSync();
   useProjectUrl();
+  useSessionUrl();
   useSettingsSync();
 
   return (

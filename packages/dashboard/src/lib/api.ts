@@ -29,6 +29,19 @@ export async function deleteSession(id: string) {
   return request(`/sessions/${id}`, { method: 'DELETE' });
 }
 
+export async function renameSession(id: string, name: string) {
+  return request<{ ok: boolean; name: string }>(`/sessions/${id}/name`, {
+    method: 'PATCH',
+    body: JSON.stringify({ name }),
+  });
+}
+
+export async function closeSession(id: string) {
+  return request<{ ok: boolean; status: string }>(`/sessions/${id}/close`, {
+    method: 'PATCH',
+  });
+}
+
 // === Agents ===
 
 export async function getAgents(sessionId: string) {

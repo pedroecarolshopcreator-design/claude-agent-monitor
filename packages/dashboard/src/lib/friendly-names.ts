@@ -20,6 +20,14 @@ const MAIN_AGENT_PATTERNS = new Set([
   "coordinator",
 ]);
 
+/** Patterns that indicate a model-named main agent (don't override these) */
+const MODEL_NAME_PATTERN = /^(opus|sonnet|haiku|claude)\s/i;
+
+/** Check if a name looks like a model name (e.g., "Opus 4.6", "Sonnet 4.6"). */
+export function isModelNamedAgent(name: string): boolean {
+  return MODEL_NAME_PATTERN.test(name);
+}
+
 /** Generic agent types that are not useful as display names */
 const GENERIC_TYPES = new Set([
   "general-purpose",
@@ -51,6 +59,11 @@ export function getAgentDisplayName(
     return "main";
   }
 
+  // Model-named agents (e.g., "Opus 4.6") - use as-is
+  if (MODEL_NAME_PATTERN.test(agentName)) {
+    return agentName;
+  }
+
   // If the name is meaningful (human-assigned, not a UUID/hash), use it
   if (isMeaningfulName(agentName)) {
     return agentName;
@@ -61,8 +74,8 @@ export function getAgentDisplayName(
     return agentType;
   }
 
-  // Last resort: first 8 chars of the ID
-  return agentId.slice(0, 8);
+  // Last resort: "Subagent" - NEVER show UUID fragments or hex strings
+  return "Subagent";
 }
 
 /**

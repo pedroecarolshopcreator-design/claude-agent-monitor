@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useSettingsStore } from '../../stores/settings-store.js';
-import type { ThemeName, SpriteResolution } from '../../stores/settings-store.js';
-import { SpritePreview } from './SpritePreview.js';
+import type { ThemeName } from '../../stores/settings-store.js';
 
 const THEME_OPTIONS: { value: ThemeName; label: string; description: string }[] = [
   { value: 'modern', label: 'Modern', description: 'Clean and minimalist interface' },
@@ -20,22 +19,13 @@ const PRESET_COLORS = [
   { value: '#f97316', label: 'Orange' },
 ];
 
-const SPRITE_OPTIONS: { value: SpriteResolution; label: string; description: string }[] = [
-  { value: '16x16', label: 'Classic', description: '16x16 pixels' },
-  { value: '24x24', label: 'Detailed', description: '24x24 pixels' },
-  { value: '32x32', label: 'HD', description: '32x32 pixels' },
-  { value: '48x48', label: 'Ultra', description: '48x48 pixels' },
-];
-
 const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/;
 
 export function AppearanceTab() {
   const theme = useSettingsStore((s) => s.theme);
   const accentColor = useSettingsStore((s) => s.accentColor);
-  const spriteResolution = useSettingsStore((s) => s.spriteResolution);
   const setTheme = useSettingsStore((s) => s.setTheme);
   const setAccentColor = useSettingsStore((s) => s.setAccentColor);
-  const setSpriteResolution = useSettingsStore((s) => s.setSpriteResolution);
 
   const [customColor, setCustomColor] = useState(
     PRESET_COLORS.some((c) => c.value === accentColor) ? '' : accentColor
@@ -159,50 +149,6 @@ export function AppearanceTab() {
             Invalid format. Use #RRGGBB (e.g. #ff5500)
           </p>
         )}
-      </section>
-
-      {/* Sprite Resolution */}
-      <section>
-        <h3 className="text-sm font-medium text-cam-text mb-3">Sprite Resolution</h3>
-        <div className="grid grid-cols-2 gap-2">
-          {SPRITE_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              onClick={() => setSpriteResolution(option.value)}
-              className={`flex items-center gap-3 p-2.5 rounded-lg border transition-all ${
-                spriteResolution === option.value
-                  ? 'border-cam-accent bg-cam-accent/10 ring-1 ring-cam-accent/30'
-                  : 'border-cam-border hover:border-cam-border-hover bg-cam-surface-2'
-              }`}
-            >
-              {/* Radio indicator */}
-              <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                spriteResolution === option.value
-                  ? 'border-cam-accent'
-                  : 'border-cam-text-muted'
-              }`}>
-                {spriteResolution === option.value && (
-                  <div className="w-2 h-2 rounded-full bg-cam-accent" />
-                )}
-              </div>
-              <div>
-                <span className={`text-xs font-medium ${
-                  spriteResolution === option.value ? 'text-cam-accent' : 'text-cam-text-secondary'
-                }`}>
-                  {option.label}
-                </span>
-                <span className="text-[10px] text-cam-text-muted ml-1.5">
-                  {option.description}
-                </span>
-              </div>
-            </button>
-          ))}
-        </div>
-
-        {/* Sprite Preview */}
-        <div className="mt-3">
-          <SpritePreview resolution={spriteResolution} />
-        </div>
       </section>
     </div>
   );

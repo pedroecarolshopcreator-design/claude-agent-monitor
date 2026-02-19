@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from "react";
 import { useSessionStore } from "../stores/session-store.js";
-import { getAgentDisplayName } from "../lib/friendly-names.js";
+import { getAgentDisplayName, isModelNamedAgent } from "../lib/friendly-names.js";
 
 /**
  * Hook that resolves agent UUIDs to human-readable display names.
@@ -33,11 +33,13 @@ export function useResolveAgentName(): (agentId: string) => string {
       let displayName = getAgentDisplayName(agent.id, agent.name, agentType);
 
       // If the display name is still just the first 8 chars of the ID
-      // and this is the earliest agent, show "main"
+      // and this is the earliest agent, show "main".
+      // But don't override model names like "Opus 4.6" - they're meaningful.
       if (
         displayName === agent.id.slice(0, 8) &&
         earliestAgent &&
-        agent.id === earliestAgent.id
+        agent.id === earliestAgent.id &&
+        !isModelNamedAgent(agent.name)
       ) {
         displayName = "main";
       }
@@ -58,8 +60,8 @@ export function useResolveAgentName(): (agentId: string) => string {
         return agentId;
       }
 
-      // Fallback: first 8 chars of UUID
-      return agentId.slice(0, 8);
+      // Fallback: "Subagent" - NEVER show UUID fragments
+      return "Subagent";
     },
     [agentNameMap],
   );

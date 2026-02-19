@@ -113,7 +113,7 @@ cam sprint import docs/SPRINTS/sprint-01.md
 - **Modern Theme** -- Clean dark dashboard with agent cards, real-time activity feed, file watcher, session timeline, and stats bar. Inspired by Linear and Vercel.
 - **Terminal Theme** -- Green-on-black interface with tmux-style panes, ASCII sparklines, vim keybindings, and CRT scan line effects.
 - **Pixel Art Theme** -- Retro RPG aesthetic with pixel borders, NES color palette, game-style HUD, and 8-bit typography.
-- **Agent Map** -- Pixel art visualization where agents are animated characters on a "Mission Floor". Watch them code, search, talk, and celebrate in real-time.
+- **Agent Map** -- 3D robot visualization where agents are interactive Spline models on a "Mission Floor". Watch them track your cursor, glow by activity, and spawn with portal animations.
 - **Kanban Board** -- Auto-updating task board with columns for Backlog, Planned, In Progress, and Completed.
 - **Burndown Chart** -- Real vs ideal progress lines with scope change indicators and sprint velocity tracking.
 
@@ -125,7 +125,7 @@ cam sprint import docs/SPRINTS/sprint-01.md
 
 - **Real-time activity feed** -- Every tool call, file edit, bash command, and message streamed live via SSE
 - **Agent panel** -- See all agents with live status indicators (active, idle, error, completed, shutdown)
-- **Agent Map** -- Pixel art visualization with 8 animated poses, speech bubbles, activity labels, and hierarchy lines
+- **Agent Map** -- 3D robot visualization with pose-reactive glow, speech bubbles, activity labels, and hierarchy lines
 - **File watcher** -- Track every file created, modified, or read, with per-agent attribution and touch counts
 - **Session timeline** -- Gantt-style visualization of agent activity over time
 - **Stats bar** -- Live counters for duration, tool calls, errors, files modified, and events per minute
@@ -157,7 +157,7 @@ Clean, professional dashboard inspired by Linear, Vercel, and Raycast. Dark back
 
 ### Pixel Art
 
-Retro RPG aesthetic with NES-era 16-color palette, pixel borders, Press Start 2P font, and game-style HUD elements. Progress bars fill pixel by pixel. Activity logs read like RPG battle text. Home of the Agent Map visualization.
+Retro RPG aesthetic with NES-era 16-color palette, pixel borders, Press Start 2P font, and game-style HUD elements. Progress bars fill pixel by pixel. Activity logs read like RPG battle text.
 
 ---
 
@@ -493,6 +493,7 @@ pnpm --filter @cam/dashboard build
 | Styling | Tailwind CSS 4 | Consistent design, easy theming across 3 themes |
 | State | Zustand | Minimal boilerplate, one store per domain |
 | Charts | Recharts | React-native charting, simple API |
+| 3D Models | Spline (@splinetool/react-spline) | Interactive 3D robot agents on the Agent Map |
 | Animation | Framer Motion | Smooth transitions for Modern theme |
 | CLI | Commander.js + Chalk + Ora | Standard Node.js CLI tooling |
 | Validation | Zod | Runtime type validation for hook event payloads |
@@ -503,7 +504,7 @@ pnpm --filter @cam/dashboard build
 
 ### v1.0 -- Mission Control (Current)
 
-Real-time agent monitoring, PRD tracking, pixel art Agent Map, 3 themes, CLI, multi-project support. 11 sprints completed. See [sprint files](docs/SPRINTS/) for details.
+Real-time agent monitoring, PRD tracking, 3D Agent Map, 3 themes, CLI, multi-project support. 11 sprints completed. See [sprint files](docs/SPRINTS/) for details.
 
 ### v1.1 -- Intelligence
 

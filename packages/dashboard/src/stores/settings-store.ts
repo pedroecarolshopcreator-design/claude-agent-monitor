@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type SpriteResolution = '16x16' | '24x24' | '32x32' | '48x48';
 export type DisplayMode = 'technical' | 'didactic';
 export type ThemeName = 'modern' | 'pixel' | 'terminal';
 
@@ -20,7 +19,6 @@ interface SettingsDefaults {
   maxEvents: number;
   maxCommunicationLines: number;
   lockPanels: boolean;
-  spriteResolution: SpriteResolution;
   showTimeline: boolean;
 }
 
@@ -39,7 +37,6 @@ const DEFAULTS: SettingsDefaults = {
   maxEvents: 500,
   maxCommunicationLines: 5,
   lockPanels: false,
-  spriteResolution: '24x24',
   showTimeline: true,
 };
 
@@ -59,7 +56,6 @@ interface SettingsState extends SettingsDefaults {
   setMaxEvents: (max: number) => void;
   setMaxCommunicationLines: (max: number) => void;
   setLockPanels: (value: boolean) => void;
-  setSpriteResolution: (res: SpriteResolution) => void;
   setShowTimeline: (value: boolean) => void;
 
   // Toggles
@@ -100,7 +96,6 @@ export const useSettingsStore = create<SettingsState>()(
       setMaxEvents: (maxEvents) => set({ maxEvents }),
       setMaxCommunicationLines: (maxCommunicationLines) => set({ maxCommunicationLines }),
       setLockPanels: (lockPanels) => set({ lockPanels }),
-      setSpriteResolution: (spriteResolution) => set({ spriteResolution }),
       setShowTimeline: (showTimeline) => set({ showTimeline }),
 
       // Toggles

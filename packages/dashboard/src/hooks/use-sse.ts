@@ -20,9 +20,10 @@ export function useSSE(sessionId?: string) {
     useProjectStore();
 
   useEffect(() => {
-    const session = useSessionStore.getState().session;
-    // Don't connect SSE for completed or error sessions - no new events will arrive
-    if (!sessionId || (session && session.status !== 'active')) {
+    // Always connect SSE if we have a sessionId.
+    // Sessions can be reactivated (e.g., user sends a new prompt after idle period),
+    // so we should always listen for events regardless of current status.
+    if (!sessionId) {
       setConnectionStatus('disconnected');
       return;
     }
@@ -66,8 +67,8 @@ export function useSSE(sessionId?: string) {
         }
       },
       onSessionStatus: (data: { session: string; status: string }) => {
+        const currentSession = useSessionStore.getState().session;
         if (data.status === "completed" || data.status === "error") {
-          const currentSession = useSessionStore.getState().session;
           if (
             currentSession &&
             (currentSession.id === data.session || !data.session)
@@ -87,11 +88,17 @@ export function useSSE(sessionId?: string) {
             });
           }
         } else if (data.status === "active") {
-          useNotificationStore.getState().addToast({
-            type: "success",
-            title: "New session started",
-            duration: 5000,
-          });
+          // Session reactivated - update status in store
+          if (
+            currentSession &&
+            (currentSession.id === data.session || !data.session)
+          ) {
+            useSessionStore.getState().setSession({
+              ...currentSession,
+              status: "active",
+              endedAt: undefined,
+            });
+          }
         }
       },
       onTaskStatusChanged: (data: {
